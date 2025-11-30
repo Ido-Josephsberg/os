@@ -1,0 +1,2 @@
+- Internal background
+- Is line len is 1024 top including the null terminator?
