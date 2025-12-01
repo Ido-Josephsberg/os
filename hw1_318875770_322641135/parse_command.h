@@ -1,3 +1,4 @@
+#pragma once
 #define MAX_LINE_LENGTH 1024
 #define MAX_ARGS 65 // Maximum number of arguments (command and 64 parameters)
 typedef struct
@@ -6,7 +7,6 @@ typedef struct
     char* args[MAX_ARGS];
     int arg_count;
     int is_background;
-    int is_internal;
 } ParsedCommand;
 
 ParsedCommand* parse_command(char* command_line);

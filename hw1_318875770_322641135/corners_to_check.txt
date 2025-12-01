@@ -1,2 +1,8 @@
-- Internal background
+- background that prints
 - Is line len is 1024 top including the null terminator?
+- if background finishes after exit, should we notify as it were before exit?
+- If i've got more arguments than i should in internal command - should i use only necessary arguments?
+- Empty prompt should print hw1shell$ or $ (instructions says $)
+- does ls l (for example) is error?
+- photo in whatsapp
+- Is malloc a system call
