@@ -7,8 +7,7 @@ typedef struct {
 } BackgroundProcess;
 
 typedef struct {
-    BackgroundProcess* processes[MAX_BACKGROUND_PROCESSES];
+    BackgroundProcess processes[MAX_BACKGROUND_PROCESSES];
     int count;
 } AllBackgroundProcesses;
-void free_background_processes(AllBackgroundProcesses* all_background_processes);
 void reap_zombie_processes(AllBackgroundProcesses* all_background_processes, int wait_for_all);

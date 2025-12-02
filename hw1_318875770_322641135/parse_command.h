@@ -9,6 +9,5 @@ typedef struct
     int is_background;
 } ParsedCommand;
 
-ParsedCommand* parse_command(char* command_line);
-void free_parsed_command(ParsedCommand* parsed_command);
+void parse_command(ParsedCommand* parsed_command_ptr, char* command_line);
 

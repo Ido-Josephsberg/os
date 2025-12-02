@@ -24,31 +24,13 @@ void update_parsed_command_args(ParsedCommand* parsed_command, char* command_lin
     }    
 }
 
-ParsedCommand* parse_command(char* command_line) {
+void parse_command(ParsedCommand* parsed_command_ptr, char* command_line) {
     /*
-    Parse the command_line into a ParsedCommand struct and return a pointer to it.
+    Parse the command_line into a ParsedCommand struct located in addres specified in parsed_command ptr.
     */
-    // Allocate memory for ParsedCommand struct
-    ParsedCommand* parsed_command = (ParsedCommand*)malloc(sizeof(ParsedCommand));
-    // Check for allocation failure and handle it
-    if (!parsed_command) {
-        printf("Failed to allocate memory\nexit 1\n");
-        return NULL;
-    }
+    
     // Copy the command line into the command field
-    strncpy(parsed_command->command, command_line, MAX_LINE_LENGTH);
+    strncpy(parsed_command_ptr->command, command_line, MAX_LINE_LENGTH);
     // Initialize args to their values based on command_line, arg_count, is_background, and is_internal
-    update_parsed_command_args(parsed_command, command_line);
-    // Return the ParsedCommand pointer
-    return parsed_command;
-}
-
-
-void free_parsed_command(ParsedCommand* parsed_command) {
-    /*
-    Frees the memory allocated for the ParsedCommand struct.
-    */
-    if (parsed_command) {
-        free(parsed_command);
-    }
+    update_parsed_command_args(parsed_command_ptr, command_line);
 }

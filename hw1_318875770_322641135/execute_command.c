@@ -51,7 +51,7 @@ void execute_external_command(ParsedCommand* parsed_command, AllBackgroundProces
             // Add the new background process to the list - check for empty slot
             int i = 0, found_slot = 0;
             while (i < MAX_BACKGROUND_PROCESSES && !found_slot) {
-                if ((all_background_processes->processes[i])->pid == -1) {
+                if ((&(all_background_processes->processes[i]))->pid == -1) {
                     found_slot = 1;
                 }
                 else
@@ -60,7 +60,7 @@ void execute_external_command(ParsedCommand* parsed_command, AllBackgroundProces
             // Notify the user that the process is running in the background
             printf("hw1shell: pid %d started\n", pid);
             //
-            BackgroundProcess* empty_slot = all_background_processes->processes[i];
+            BackgroundProcess* empty_slot = &(all_background_processes->processes[i]);
             empty_slot->pid = pid;
             all_background_processes->count++;
             strncpy(empty_slot->command, parsed_command->command, MAX_LINE_LENGTH);
