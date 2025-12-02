@@ -15,9 +15,16 @@ void update_parsed_command_args(ParsedCommand* parsed_command, char* command_lin
         i++;
     } while (!got_null && i < MAX_ARGS);
     parsed_command->arg_count = got_null ? i - 1 : i;
-    if (parsed_command->args[parsed_command->arg_count - 1][0] == '&') {
+    // Check if the last argument is '&' to set is_background
+    char *last_arg = parsed_command->args[parsed_command->arg_count - 1];
+    if (last_arg[strlen(last_arg) - 1] == '&') {
         parsed_command->is_background = 1;
-        parsed_command->args[parsed_command->arg_count - 1] = NULL;
+        // Remove the '&' from the last argument
+        last_arg[strlen(last_arg) - 1] = '\0';
+        // If the last argument is now empty, set it to NULL
+        if (strlen(last_arg) == 0) {
+            parsed_command->args[parsed_command->arg_count - 1] = NULL;
+        }
         parsed_command->arg_count--;
     } else {
         parsed_command->is_background = 0;

@@ -17,8 +17,8 @@ void reap_zombie_processes(AllBackgroundProcesses* all_background_processes, int
             if (return_pid == -1) {
                 // TODO: handle error
                 printf("hw1shell: %s failed, errno is %d\n", "waitpid", errno);
-            } else if (return_pid > 0) {
-                // Process has terminated
+            } else if (return_pid > 0 && (!wait_for_all)) {
+                // Process has terminated and not on 'wait for all' mode (not after exit command)
                 printf("hw1shell: pid %d finished\n", process->pid);
                 process->pid = -1; // Mark the slot as empty
                 all_background_processes->count--;
