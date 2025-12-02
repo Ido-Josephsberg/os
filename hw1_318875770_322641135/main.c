@@ -15,8 +15,11 @@
 
 int main(int argc, char const *argv[])
 {
+    // Initialize all background processes struct
     AllBackgroundProcesses all_background_processes;
+    // Initialize parsed command struct
     ParsedCommand parsed_command;
+    // Set all background process count to 0 and pids of their processes to -1
     all_background_processes.count = 0;
     for (int i = 0; i < MAX_BACKGROUND_PROCESSES; i++) 
         (all_background_processes.processes[i]).pid = -1;
@@ -31,16 +34,20 @@ int main(int argc, char const *argv[])
             printf("Got EOF or read error has occured.\n");
             exit(1);
         }
+
         // Replace newline character from fgets with null terminator
         command_line[strcspn(command_line, "\n")] = 0;
+
         // continue to next iteration if the command line is empty
         if (strlen(command_line) == 0) {
             reap_zombie_processes(&all_background_processes, FALSE);
             continue;
         }
+
         // Parse the command line input into a ParsedCommand struct
         parse_command(&parsed_command, command_line);
 
+        // Check if the command is an internal command
         if (strcmp(parsed_command.args[0], "cd") == 0) {
             // Handle internal command 'cd'
             cd(parsed_command.args[1], parsed_command.arg_count);
@@ -54,8 +61,9 @@ int main(int argc, char const *argv[])
             if (parsed_command.arg_count != 1)
                 printf("hw1shell: invalid command\n");
             else {
-                // Reap any remaining zombie processes, wait for them to finish
+                // Reap any remaining zombie processes, wait for them to finish (don't notify the user)
                 reap_zombie_processes(&all_background_processes, TRUE);
+                // Exit the shell
                 break;
             }
             
@@ -63,8 +71,7 @@ int main(int argc, char const *argv[])
             // Handle external commands
             execute_external_command(&parsed_command, &all_background_processes);
         }
-        // TODO: reap zombies and notify (12)
-        // Reap zombie processes
+        // Reap zombie processes and notify the user
         reap_zombie_processes(&all_background_processes, FALSE);
     }
 
