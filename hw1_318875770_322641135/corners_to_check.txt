@@ -1,10 +1,8 @@
-- background that prints
-- Is line len is 1024 top including the null terminator?
-- if background finishes after exit, should we notify as it were before exit?
+- background that prints - It's Ok
+- Is line len is 1024 top including the null terminator? *** I believe yes
+- if background finishes after exit, should we notify as it were before exit? *** 
 - If i've got more arguments than i should in internal command - should i use only necessary arguments? ***I think that not (Omri's forum)
-- Empty prompt should print hw1shell$ or $ (instructions says $)
-- does ls l (for example) is error?
-- photo in whatsapp
-- Is malloc a system call
-- can we assume there is a space before the &?
-- 
+- Empty prompt should print hw1shell$ or $ (instructions says $) - *** I think full prompt
+- does ls l (for example) is error? *** I think it's ok
+- photo in whatsapp *** talked with Eilon
+- can we assume there is a space before the &? No - taked care
