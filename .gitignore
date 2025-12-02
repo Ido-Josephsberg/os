@@ -398,12 +398,11 @@ FodyWeavers.xsd
 
 # VS Code files for those working on multiple tools
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
-
+.vscode/settings.json
 # Local History for Visual Studio Code
 .history/
 
@@ -421,4 +420,4 @@ FodyWeavers.xsd
 *.o
 
 # Ignore compiled executables
-main
+hw1shell
