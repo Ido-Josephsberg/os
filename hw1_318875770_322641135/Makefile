@@ -1,5 +1,5 @@
 all: main.o background_processes.o parse_command.o internal_commands.o execute_command.o
-	gcc main.o background_processes.o parse_command.o internal_commands.o execute_command.o -o main
+	gcc main.o background_processes.o parse_command.o internal_commands.o execute_command.o -o hw1shell
 
 main.o: main.c execute_command.h execute_command.c background_processes.h background_processes.c parse_command.h parse_command.c
 	gcc -pthread -g -c main.c -o main.o
@@ -17,4 +17,4 @@ execute_command.o: execute_command.c background_processes.c parse_command.c
 	gcc -pthread -g -c execute_command.c -o execute_command.o
 
 clean:
-	rm  main main.o background_processes.o parse_command.o internal_commands.o execute_command.o
+	rm  hw1shell main.o background_processes.o parse_command.o internal_commands.o execute_command.o
