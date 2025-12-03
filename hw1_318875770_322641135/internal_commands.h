@@ -1,4 +1,5 @@
 #pragma once
 #include "background_processes.h"
-void cd(char* path, int arg_count);
-void jobs(AllBackgroundProcesses* all_background_processes, int arg_count);
+#include "parse_command.h"
+void cd(ParsedCommand* parsed_command);
+void jobs(AllBackgroundProcesses* all_background_processes, ParsedCommand* parsed_command);

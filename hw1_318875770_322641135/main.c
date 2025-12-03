@@ -50,15 +50,15 @@ int main(int argc, char const *argv[])
         // Check if the command is an internal command
         if (strcmp(parsed_command.args[0], "cd") == 0) {
             // Handle internal command 'cd'
-            cd(parsed_command.args[1], parsed_command.arg_count);
+            cd(&parsed_command);
         } else if (strcmp(parsed_command.args[0], "jobs") == 0) {
             // Handle internal command 'jobs'
-            jobs(&all_background_processes, parsed_command.arg_count);
+            jobs(&all_background_processes, &parsed_command);
         }
         // If the command is "exit", break the loop and exit after reap subprocesses and free memory
         else if (strcmp(parsed_command.args[0], "exit") == 0) {
             // Check if got one argument (only command)
-            if (parsed_command.arg_count != 1)
+            if (parsed_command.arg_count != 1 || parsed_command.is_background)
                 printf("hw1shell: invalid command\n");
             else {
                 // Reap any remaining zombie processes, wait for them to finish (don't notify the user)
