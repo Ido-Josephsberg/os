@@ -31,7 +31,6 @@ void execute_external_command(ParsedCommand* parsed_command, AllBackgroundProces
         // Execute the command
         execvp(parsed_command->args[0], parsed_command->args);
         // If execvp returns, there was an error
-        // TODO: DO 13 and exit
         printf("hw1shell: invalid command\n");
         // Notify about system call failure
         printf("hw1shell: %s failed, errno is %d\n", "execvp", errno);
@@ -42,7 +41,8 @@ void execute_external_command(ParsedCommand* parsed_command, AllBackgroundProces
         if (!(parsed_command->is_background)) {
             // Wait for the child process to finish and check for errors
             if (waitpid(pid, NULL, 0) == -1) {
-                // TODO: notify on error
+                // Notify about system call failure
+                printf("hw1shell: %s failed, errno is %d\n", "waitpid", errno);
                 return;
         }
         // If the command is background, add it to the list of background processes
