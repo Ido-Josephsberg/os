@@ -1,0 +1,10 @@
+# Ido's assumptoins
+- Global array of mutexes - one for each file, in the index as the file. Named file_counters_mutexes.
+- MAX_COMMANDS_IN_JOB macro defuned in macros.h as maximum commands in a job
+
+
+
+
+# Noa's assumptoins
+-
+
