@@ -1,3 +1,85 @@
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include "system_call_error.h"
+#include "counter_files.h"
+#include "cmdfile_handler.h"
+#include "job_queue.h"
+#include "threads.h"
+#include "macros.h"
 // ?TODO?: Create thread struct (in h file) which holds thread id, current job info, available (mutex).
 // TODO: Implement create_threads function which creates num_threads threads.
 // TODO: Implement thread_routine function which each thread will run.
+
+
+
+static void msleep(int milisec) {
+    // Sends the calling thread to sleep to milisec miliseconds
+    // Convert miliseconds to microseconds
+    int mikrosec = milisec * 1E3;
+    // Sleep for mikrosec mikroseconds. Notify in case of failure
+    if (usleep(mikrosec) != 0)
+        print_sys_call_error("usleep");
+}
+
+static void execute_basic_command(Command *basic_cmd) {
+    // Get the argument of the command as integer
+    int arg = atoi(basic_cmd->cmd_arg);
+    // If the command is "msleep", call msleep with the provided argument
+    if (strcmp(basic_cmd->cmd_name, "msleep") == 0)
+        msleep(arg);
+    // If the command is "increment", call increment with the provided argument
+    else if (strcmp(basic_cmd->cmd_name, "increment") == 0)
+        increment(arg);
+    // Else, i.e. the command is "decrement", call decrement with the provided argument
+    else
+        decrement(arg);
+
+}
+
+static void execute_job(Command *job_cmd[MAX_COMMANDS_IN_JOB]) {
+    Command *curr_cmd;
+    int arg, counter = 0;
+    // Iterate through the commands in the job
+    for(int i = 0; job_cmd[i] != NULL; i++) {
+        // Current command
+        curr_cmd = job_cmd[i];
+        // If the comand is repeat, execute next command arg times
+        if (strcmp(curr_cmd->cmd_name, "repeat") == 0) {
+            // Argument of the command as integer
+            arg = atoi(curr_cmd->cmd_arg);
+            // Execute the remaining commands arg times
+            for (int count = 0; count < arg; count++) {
+                for (int j = i + 1; job_cmd[j] != NULL; j++) {
+                    curr_cmd = job_cmd[j];
+                    execute_basic_command(curr_cmd);
+                }
+            }
+            // Break the loop as we have executed all commands in the job as part of repeat
+            break;
+        }
+        // Execute each basic command sequentially
+        execute_basic_command(curr_cmd);
+    }
+}
+
+void* thread_routine(void* arg) {
+    // Main routine for each thread - fetch and execute jobs from the shared work queue
+    while (1) {
+        // Conditinal wait until a job is available in the work queue
+        // First, lock the mutex for the work queue
+        pthread_mutex_lock(&mutex_of_shared_jobs_queue);
+        // Wait until there is at least one job in the queue
+        while (!shared_jobs_queue.size) {
+            // Wait on the condition variable for new jobs and unlock the mutex while waiting
+            pthread_cond_wait(&ava_jobs_cond, &mutex_of_shared_jobs_queue);
+        }
+        // Fetch the job from the front of the queue
+        Command **job_to_execute = pop_job(&shared_jobs_queue);
+        // Unlock the mutex for the work queue
+        pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
+        // Execute the fetched job
+        execute_job(job_to_execute);
+    }   
+}
+

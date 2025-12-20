@@ -4,6 +4,12 @@
 #include <errno.h>
 #include <string.h>
 #include "macros.h"
+#include "counter_files.h"
+#include <unistd.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include "system_call_error.h"
+#define MAX_DIGITS 20
 
 void create_counterxx_files(int num_files) {
     if (num_files <= 0) {
@@ -39,4 +45,67 @@ void create_counterxx_files(int num_files) {
             exit(EXIT_FAILURE);
         }
     }    
+}
+
+static void inc_dec_counter_file(int file_number, int inc_flag) {
+    // Increment or decrement (increment if inc_flag is 1) file counter number file_number.
+    // File path
+    char file_name[12];
+    sprintf(file_name, "counter%02d.txt", file_number);
+    // Lock the mutex corresponding to the file counter before accessing it to prevent race conditions.
+    pthread_mutex_lock(file_counters_mutexes[file_number]);
+    // Open file counter number file_number
+    int fd = open(file_name, O_RDWR);
+    // Check for errors
+    if (fd == -1) {
+        print_sys_call_error("open");
+        pthread_mutex_unlock(file_counters_mutexes[file_number]);
+        return;
+    }
+    // Read the current value from the file
+    char str_counter[MAX_DIGITS];
+    if (read(fd, str_counter, MAX_DIGITS) == -1) {
+        print_sys_call_error("read");
+        close(fd);
+        pthread_mutex_unlock(file_counters_mutexes[file_number]);
+        return;
+    }
+    // Convert the read string to long long integer
+    long long counter_value = atoll(str_counter);
+    // Increment or decrement the counter value based on inc_flag
+    counter_value += (inc_flag ? 1 : -1);
+    // Move the file offset to the beginning of the file. Notify in case of failure
+    if (lseek(fd, 0, SEEK_SET) == -1) {
+        print_sys_call_error("lseek");
+        close(fd);
+        pthread_mutex_unlock(file_counters_mutexes[file_number]);
+        return;
+    }
+    // Convert the updated counter value back to string
+    sprintf(str_counter, "%lld", counter_value);
+    // Write the updated counter value back to the file and notify in case of failure
+    if (write(fd, str_counter, strlen(str_counter)) == -1) {
+        print_sys_call_error("write");
+        close(fd);
+        pthread_mutex_unlock(file_counters_mutexes[file_number]);
+        return;
+    }
+    // Close the file descriptor and notify in case of failure
+    if (close(fd) == -1) {
+        print_sys_call_error("close");
+        pthread_mutex_unlock(file_counters_mutexes[file_number]);
+        return;
+    }
+    // Unlock the file mutex
+    pthread_mutex_unlock(file_counters_mutexes[file_number]);
+}
+
+void increment(int file_number) {
+    // Increment file counter number file_number
+    inc_dec_counter_file(file_number, 1);
+}
+
+void decrement(int file_number) {
+    // Decrement file counter number file_number
+    inc_dec_counter_file(file_number, 0);
 }

@@ -1,8 +1,8 @@
 # Ido's assumptoins
 - Global array of mutexes - one for each file, in the index as the file. Named file_counters_mutexes.
 - MAX_COMMANDS_IN_JOB macro defuned in macros.h as maximum commands in a job
-
-
+- Global mutex of shared queque jobs named mutex_of_shared_jobs_queque 
+- pthread condition - available jobs in shared jobs queue. Named ava_jobs_cond
 
 # Noa's assumptoins
 - MAX_WORKER_THREADS macro define max number of worker thread to create
