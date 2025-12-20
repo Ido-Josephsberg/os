@@ -1,11 +1,12 @@
 // TODO: Implement dispatcher initialization function:
-    // Includes check number of parameters from command line.
-    // Includes calling create_counter_files.
-    // Includes calling create_threads.
+    // Includes check number of parameters from command line. --------> DONE
+    // Includes calling create_counter_files.  -----------------------> DONE
+    // Includes calling create_threads.  -----------------------------> DONE
 
-// TODO: Implement dispatcher_msleep -> DONE
-// TODO: Implement dispatcher_wait.
+// TODO: Implement dispatcher_msleep ---------------------------------> DONE
+// TODO: Implement dispatcher_wait.  ---------------------------------> DONE
 // TODO: Implement finalize_dispatcher.
+// TODO: Implement log enabled functionality.
 
 
 #include <stdlib.h>
@@ -13,6 +14,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "dispatcher.h"
 #include "macros.h"
 #include "counter_files.h"
@@ -42,12 +44,28 @@ void init_dispatcher(int num_counters, int num_threads, int log_enabled) {
 
 }
 
-void dispatcher_msleep(int milliseconds /*TODO: insert more args if needed*/) {
+void dispatcher_msleep(int milliseconds) {
     usleep(milliseconds * 1000); // Convert milliseconds to microseconds, the usleep meansurement argument
 }
 
-void dispatcher_wait() {
+void dispatcher_wait(JobQueue* job_queue) {
     //TODO: Implement wait logic
+    
+    //Lock the mutex to inspect the state safely
+    pthread_mutex_lock(&job_queue->lock);
+
+    // Conditional Wait loop
+    while (job_queue->active_jobs > 0) {
+        /* pthread_cond_wait does the following:
+           - Automatically unlocks the mutex so workers can progress.
+           - Puts the dispatcher thread into a sleep state (blocking).
+           - Re-locks the mutex immediately upon being signaled and waking up.
+        */
+        pthread_cond_wait(&job_queue->cond_idle, &job_queue->lock);
+    }
+
+    // Once active_jobs == 0, we have the lock and can proceed
+    pthread_mutex_unlock(&job_queue->lock);
 }
 
 void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_enabled) {
@@ -62,6 +80,8 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
 
     // Initialize shared Queue:
     JobQueue shared_job_queue = {NULL, NULL, 0, 0}; // Initialize an empty job queue
+    pthread_mutex_init(&shared_job_queue.lock, NULL);
+    pthread_cond_init(&shared_job_queue.cond_idle, NULL);
 
     // Dispatcher Loop
     char line[MAX_JOB_FILE_LINE];
@@ -85,11 +105,19 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
         else {
             Command disp_cmd = {NULL, 0};
             parse_cmd(line, &disp_cmd);
-            // TODO implement dispatcher command calling
+            
+            // Check dispatcher commands:
+            if (strcmp(disp_cmd.cmd_name, "dispatcher_msleep") == 0) {
+                dispatcher_msleep(disp_cmd.cmd_arg);
+            }
+            else if (strcmp(disp_cmd.cmd_name, "dispatcher_wait") == 0) {
+                dispatcher_wait(shared_job_queue);
+            }
+             {
+                fprintf(stderr, "Unknown dispatcher command: %s\n", disp_cmd.cmd_name);
+            }
         }          
         
-        // Wait for all background commands to complete before processing next line
-        dispatcher_wait();
     }    
     //Convention: closing the cmd_file in the dispatcher main function called dispatcher().
 }

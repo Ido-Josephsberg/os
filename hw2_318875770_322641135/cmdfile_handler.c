@@ -23,15 +23,21 @@ void parse_cmd(char *cmd_str, Command *cmd) {
     char *name = strtok_r(cmd_str, " \t\n", &saveptr);
     char *arg_str = strtok_r(NULL, " \t\n", &saveptr);
 
-    if (name == NULL || arg_str == NULL) {
-        fprintf(stderr, "Invalid command format\n");
+    if (name == NULL) {
+        fprintf(stderr, "Invalid command format: no command name\n");
         exit(EXIT_FAILURE);
     }
 
-    // Copy command name and argument into Command struct
+    // Copy command name into Command struct
     strncpy(cmd->cmd_name, name, sizeof(cmd->cmd_name) - 1);
     cmd->cmd_name[sizeof(cmd->cmd_name) - 1] = '\0'; // Ensure null-termination
-    cmd->cmd_arg = atoi(arg_str);
+    
+    // If argument exists, parse it; otherwise set to 0
+    if (arg_str != NULL) {
+        cmd->cmd_arg = atoi(arg_str);
+    } else {
+        cmd->cmd_arg = 0; // Default value for commands without arguments
+    }
 }
 
 void parse_worker_line(const char *line, Command *job_cmds) {   

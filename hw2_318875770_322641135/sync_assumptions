@@ -8,4 +8,12 @@
 - MAX_WORKER_THREADS macro define max number of worker thread to create
 - MAX_COUNTER_FILES macro define max number of counter files to create
 - convention: If all workes fine, closing the cmd_file in the dispatcher main function called dispatcher().
-
+- JobQueue looks like: 
+        typedef struct JobQueue {
+            Job* head;
+            Job* tail;
+            int size;
+            int active_jobs;           // The counter for pending/running worker tasks
+            pthread_mutex_t lock;      // Mutex to protect access to the queue and counter
+            pthread_cond_t cond_idle;  // Condition variable to wake the dispatcher
+        } JobQueue;

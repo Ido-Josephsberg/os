@@ -10,3 +10,4 @@
 
 /*Jobs*/
 #define MAX_COMMANDS_IN_JOB 128 //max chars in job line. min command + min arg + space = 8 chars -> floor(1024/8) = 128
+#define MAX_CMD_NAME_LENGTH 20  //max length of command name - dispatcher_msleep = 17 chars, I defined it as 20 just in case
