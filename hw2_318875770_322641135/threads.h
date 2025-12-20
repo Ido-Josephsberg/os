@@ -1,0 +1,1 @@
+void create_num_threads_threads(int num_threads, pthread_t *threads_array);

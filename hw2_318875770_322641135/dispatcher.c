@@ -18,20 +18,24 @@
 #include "dispatcher.h"
 #include "macros.h"
 #include "counter_files.h"
+#include "job_queue.h"
 #include "cmdfile_handler.h"
+#include "threads.h"
 #include "log_files.h"
 
 /*Assistive Functions For Dispatcher*/
 
-void init_dispatcher(int num_counters, int num_threads, int log_enabled) {
+void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread_t *threads_array) {
     // Validate num_counters and create counter files
     if ((num_counters <= 0) || (num_counters > MAX_COUNTER_FILES)) {
         fprintf(stderr, "Invalid number of counters: %d\n", num_counters);
         exit(EXIT_FAILURE);
     }
+    
+    // Create num_threads threads
+    create_num_threads_threads(num_threads, threads_array);
     // Create counter files
     create_counterxx_files(num_counters);
-
     // Validate num_threads and create threads
     if ((num_threads <= 0) || (num_threads > MAX_WORKER_THREADS)) {
         fprintf(stderr, "Invalid number of threads: %d\n", num_threads);
@@ -100,7 +104,7 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
             // Process worker command - insert into shared job queue
             Command job_cmds[MAX_COMMANDS_IN_JOB];
             parse_worker_line(line, job_cmds);
-            push_job(job_cmds, shared_job_queue);
+            push_job(job_cmds, &shared_job_queue);
         }
         else {
             Command disp_cmd = {NULL, 0};
@@ -111,10 +115,10 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
                 dispatcher_msleep(disp_cmd.cmd_arg);
             }
             else if (strcmp(disp_cmd.cmd_name, "dispatcher_wait") == 0) {
-                dispatcher_wait(shared_job_queue);
+                dispatcher_wait(&shared_job_queue);
             }
              {
-                fprintf(stderr, "Unknown dispatcher command: %s\n", disp_cmd.cmd_name);
+                printf("Unknown dispatcher command: %s\n", disp_cmd.cmd_name);
             }
         }          
         
@@ -122,8 +126,21 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
     //Convention: closing the cmd_file in the dispatcher main function called dispatcher().
 }
 
-void finalize_dispatcher() {
-    //TODO: Implement finalization logic
+void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
+    // Cleanup resources, write stats.txt, and exit all threads
+    // Allocate exit command array
+    Command *exit_cmd_array = malloc(sizeof(Command) * num_threads);
+    if (exit_cmd_array == NULL) {
+        printf("hw2: memory allocation failed, exiting\n");
+        exit(1);
+    }
+    // Exit all threads and join them
+    exit_all_threads(threads_array, num_threads);
+    // Free exit command array
+    if (exit_cmd_array) {
+        free(exit_cmd_array);
+    }
+    // TODO: Write stats.txt if needed
 }
 
 /*Main Dispatcher Function*/
@@ -144,9 +161,10 @@ void dispatcher(int argc, char *argv[]) {
     int num_counters = atoi(argv[3]);
     int log_enabled = atoi(argv[4]);
 
+    // Create an array to hold thread IDs
+    pthread_t threads_array[MAX_WORKER_THREADS];
     // Initialize dispatcher
-    init_dispatcher(num_counters, num_threads, log_enabled);
-
+    init_dispatcher(num_counters, num_threads, log_enabled, threads_array);
     //Dispatcher Loop
     char line[MAX_JOB_FILE_LINE];  
     while (fgets(line, sizeof(line), cmd_file)) {
@@ -155,7 +173,7 @@ void dispatcher(int argc, char *argv[]) {
     }
     
     // Cleanup, write stats.txt, and exit
-    finalize_dispatcher(); 
+    finalize_dispatcher(threads_array, num_threads); 
 
     // Close command file
     if (fclose(cmd_file) != 0) {

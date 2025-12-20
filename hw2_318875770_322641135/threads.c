@@ -1,6 +1,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <pthread.h>
+#include <stdio.h>
 #include "system_call_error.h"
 #include "counter_files.h"
 #include "cmdfile_handler.h"
@@ -23,6 +25,11 @@ static void msleep(int milisec) {
 }
 
 static void execute_basic_command(Command *basic_cmd) {
+    // Execute a basic command (msleep, increment, decrement, exit)
+    // If the command is exit, kill the calling thread
+    if (strcmp(basic_cmd->cmd_name, "exit") == 0) {
+        pthread_exit(NULL);
+    }
     // Get the argument of the command as integer
     int arg = atoi(basic_cmd->cmd_arg);
     // If the command is "msleep", call msleep with the provided argument
@@ -63,7 +70,7 @@ static void execute_job(Command *job_cmd[MAX_COMMANDS_IN_JOB]) {
     }
 }
 
-void* thread_routine(void* arg) {
+static void* thread_routine(void* arg) {
     // Main routine for each thread - fetch and execute jobs from the shared work queue
     while (1) {
         // Conditinal wait until a job is available in the work queue
@@ -82,4 +89,46 @@ void* thread_routine(void* arg) {
         execute_job(job_to_execute);
     }   
 }
+
+void create_num_threads_threads(int num_threads, pthread_t *threads_array) {
+    // Create num_threads threads which will run thread_routine
+    // pthread create status
+    int status;
+    // Iterate to create num_threads threads
+    for (int i = 0; i < num_threads; i++) {
+        // Create a new thread and check for errors
+        status = pthread_create(&threads_array[i], NULL, thread_routine, NULL);
+        if (status != 0) {
+            printf("hw2: pthread_create failed: %s,\nexiting\n", strerror(status));
+            exit(1);
+        }
+    }
+}
+
+void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_cmd_array) {
+    // Push num_threads exit commands into the shared job queue to terminate all threads and 
+    // wait for their termination
+    // Push exit commands into the shared job queue
+    for (int i = 0; i < num_threads; i++) {
+        // Create exit command
+        strcpy((exit_cmd_array + i)->cmd_name, "exit");
+        (exit_cmd_array + i)->cmd_arg = NULL;
+        // Push exit command into the shared job queue
+        push_job(exit_cmd_array + i, &shared_jobs_queue);
+        // TODO: Where we wake up threads???
+    }
+    // Status variable for pthread_join
+    int status;
+    // Wait for all threads to terminate
+    for (int i = 0; i < num_threads; i++) {
+        status = pthread_join(threads_array[i], NULL);
+        if (status != 0) {
+            printf("hw2: pthread_join failed: %s,\nexiting\n", strerror(status));
+            exit(1);
+        }
+    }
+}
+
+
+
 

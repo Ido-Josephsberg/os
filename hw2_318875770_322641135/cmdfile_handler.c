@@ -9,6 +9,7 @@
 #include "dispatcher.h"
 #include "macros.h"
 #include "cmdfile_handler.h"
+#include "job_queue.h"
 #include <stdlib.h>
 #include <stdio.h>
 
