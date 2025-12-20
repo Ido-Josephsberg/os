@@ -55,7 +55,7 @@ void parse_worker_line(const char *line, Command *job_cmds) {
     while (command_str != NULL && i < MAX_COMMANDS_IN_JOB) {
 
         char *command_str_cp = command_str;
-        parse_cmd(command_str_cp, job_cmds[i]);
+        parse_cmd(command_str_cp, job_cmds + i);
         
         // Move to next job command
         i++;

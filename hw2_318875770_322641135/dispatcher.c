@@ -42,6 +42,14 @@ void init_dispatcher(int num_counters, int num_threads, int log_enabled) {
 
 }
 
+void dispatcher_msleep(int milliseconds /*TODO: insert more args if needed*/) {
+    usleep(milliseconds * 1000); // Convert milliseconds to microseconds, the usleep meansurement argument
+}
+
+void dispatcher_wait() {
+    //TODO: Implement wait logic
+}
+
 void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_enabled) {
     // This function contains the dispatcher loop logic
 
@@ -53,7 +61,7 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
     }
 
     // Initialize shared Queue:
-    JobQueue shared_job_queue = {NULL, NULL, 0}; // Initialize an empty job queue
+    JobQueue shared_job_queue = {NULL, NULL, 0, 0}; // Initialize an empty job queue
 
     // Dispatcher Loop
     char line[MAX_JOB_FILE_LINE];
@@ -84,14 +92,6 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
         dispatcher_wait();
     }    
     //Convention: closing the cmd_file in the dispatcher main function called dispatcher().
-}
-
-void dispatcher_msleep(int milliseconds /*TODO: insert more args if needed*/) {
-    usleep(milliseconds * 1000); // Convert milliseconds to microseconds, the usleep meansurement argument
-}
-
-void dispatcher_wait() {
-    //TODO: Implement wait logic
 }
 
 void finalize_dispatcher() {
