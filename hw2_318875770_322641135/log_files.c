@@ -1,42 +1,39 @@
-// Create num_files counter files and initialize them to zero.
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <string.h>
 #include "macros.h"
 
-void create_counterxx_files(int num_files) {
+void create_threadxx_files(int num_files) {
     if (num_files <= 0) {
         fprintf(stderr, "Invalid num_files: %d\n", num_files);
         //close cmd_file in dispatcher main function
         exit(EXIT_FAILURE);
     }
 
-    // Initialize counter files
+    // Initialize thread files
     for (int i = 1; i <= num_files; i++) {
         char filename[MAX_FILE_NAME];
-        // Write filename into file
-        snprintf(filename, sizeof(filename), "count_%02d.txt", i);
+        snprintf(filename, sizeof(filename), "thread_%02d.txt", i);
         
-        //Opens file for writing, return error if fails
         FILE *fp = fopen(filename, "w");
         if (fp == NULL) {
             fprintf(stderr, "Error creating %s: %s\n", filename, strerror(errno));
             //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
         }
-        // Initialize file content to 0 (long long type)
+        
         if (fprintf(fp, "%lld\n", 0LL) < 0) {
             fprintf(stderr, "Error writing to %s: %s\n", filename, strerror(errno));
             fclose(fp);
             //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
         }
-        // close file
+        
         if (fclose(fp) != 0) {
             fprintf(stderr, "Error closing %s: %s\n", filename, strerror(errno));
             //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
         }
-    }    
+    }
+    
 }

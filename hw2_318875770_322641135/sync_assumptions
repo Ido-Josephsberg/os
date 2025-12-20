@@ -4,7 +4,8 @@
 
 
 
-
 # Noa's assumptoins
--
+- MAX_WORKER_THREADS macro define max number of worker thread to create
+- MAX_COUNTER_FILES macro define max number of counter files to create
+- convention: If all workes fine, closing the cmd_file in the dispatcher main function called dispatcher().
 
