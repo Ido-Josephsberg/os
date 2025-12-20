@@ -1,9 +1,9 @@
 #pragma once
 
-void process_cmdfile_line(const char *line);
-void insert_job_into_queue(/*TODO: complete args*/);
+void parse_cmd(char *cmd_str, Command *cmd);
+void parse_worker_line(const char *line, Command *job_cmds);
 
-struct Command {
+typedef struct {
     char* cmd_name;
     int cmd_arg;
-};
+} Command;

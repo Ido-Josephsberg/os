@@ -48,19 +48,38 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
     // Validate cmd_file
     if (cmd_file == NULL) {
         perror("Failed to open command file");
-        fclose(cmd_file); // TODO: Think if closing the file needed here
+
         exit(EXIT_FAILURE);
     }
+
+    // Initialize shared Queue:
+    JobQueue shared_job_queue = {NULL, NULL, 0}; // Initialize an empty job queue
 
     // Dispatcher Loop
     char line[MAX_JOB_FILE_LINE];
     while (fgets(line, sizeof(line), cmd_file)) {
-        // TODO: Think what should come first - process the line / parse it into queue obj and insert it into line. 
-        
-        // Process each line of the command file and insert it into shared job queue
-        process_cmdfile_line(line);
-        insert_job_into_queue(/*TODO: complete args*/);
+               
+        // Check if a line is a worker or dispatcher command
+        //int is_worker_cmd = 0; // TODO: Implement logic to determine if it's a worker command
+        char* curr_line_ptr = line;
 
+        //skip leading whitespaces
+        while (*curr_line_ptr == ' ' || *curr_line_ptr == '\t') {
+            curr_line_ptr++;
+        }
+        // Check if worker command
+        if (strncmp(curr_line_ptr, "worker", 6) == 0) {
+            // Process worker command - insert into shared job queue
+            Command job_cmds[MAX_COMMANDS_IN_JOB];
+            parse_worker_line(line, job_cmds);
+            push_job(job_cmds, shared_job_queue);
+        }
+        else {
+            Command disp_cmd = {NULL, 0};
+            parse_cmd(line, &disp_cmd);
+            // TODO implement dispatcher command calling
+        }          
+        
         // Wait for all background commands to complete before processing next line
         dispatcher_wait();
     }    
