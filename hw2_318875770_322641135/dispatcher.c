@@ -33,6 +33,8 @@ void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread
         exit(EXIT_FAILURE);
     }
 
+    //TODO: Do we need to initialize mutexes for counters here???
+
     // Validate num_threads and create threads
     if ((num_threads <= 0) || (num_threads > MAX_WORKER_THREADS)) {
         printf("Invalid number of threads: %d\n", num_threads);
@@ -46,7 +48,7 @@ void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread
     }
     
     // Create counter files
-    create_counterxx_files(num_counters);
+    create_countxx_files(num_counters);
 }
 
 static void dispatcher_wait(JobQueue* job_queue) {   
@@ -96,12 +98,22 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
         if (strncmp(curr_line_ptr, "worker", 6) == 0) {
             // Process worker command - insert into shared job queue
             Command* job_cmds = (Command*)malloc(sizeof(Command) * MAX_COMMANDS_IN_JOB);
-            parse_worker_line(line, job_cmds); 
+            if (job_cmds == NULL) {
+                printf("hw2: memory allocation failed, exiting\n");
+                exit(EXIT_FAILURE);
+            }
+            //init job_cmds to empty commands
+            for (int i = 0; i < MAX_COMMANDS_IN_JOB; i++) {
+                strcpy((job_cmds + i)->cmd_name, "");
+                (job_cmds + i)->cmd_arg = 0;
+            }
+            // Parse the worker line into job_cmds array
+            parse_worker_line(curr_line_ptr, job_cmds); 
             push_job(job_cmds, &shared_job_queue);
         }
         else {
             Command disp_cmd = {"", 0};
-            parse_cmd(line, &disp_cmd);
+            parse_cmd(curr_line_ptr, &disp_cmd);
             
             // Check dispatcher commands:
             if (strcmp(disp_cmd.cmd_name, "dispatcher_msleep") == 0) {
