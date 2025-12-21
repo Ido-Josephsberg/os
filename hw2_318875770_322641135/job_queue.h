@@ -11,7 +11,7 @@ typedef struct {
 
 // Job struct representing a job in the job queue
 typedef struct Job {
-    Command** job_cmds; // pointer to array of Command pointers in the job
+    Command* job_cmds; // pointer to array of Command pointers in the job
     struct Job* next; // Pointer to the next job in the queue
 } Job;
 

@@ -29,7 +29,6 @@ void push_job(Command *job_cmd, JobQueue *queue) {
 }
 
 Command* pop_job(JobQueue *queue) {
-    //TODO: NOTE: I've changed pop_job to return Command* instead of Command** -> to match the push_job signature.
     // Remove and return the job commands from the head of the job queue
     // If the queue is empty, return NULL
     if (queue->size == 0) {
@@ -51,6 +50,6 @@ Command* pop_job(JobQueue *queue) {
     free(head_job);
 
     // Return pointer to the Commands array of the removed job
-    //TODO: NOTE: TO FREE THE MEMORY
+    //TODO NOTE: TO FREE THE MEMORY
     return job_cmds;
 }
