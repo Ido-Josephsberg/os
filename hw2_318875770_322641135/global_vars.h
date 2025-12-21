@@ -1,6 +1,4 @@
 #pragma once
-
-#include "dispatcher.h"
 #include "job_queue.h"
 #include "macros.h"
 

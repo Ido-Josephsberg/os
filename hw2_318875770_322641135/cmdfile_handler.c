@@ -5,8 +5,6 @@
     // when available).
 
 //TODO: Handle log files? 
-
-#include "dispatcher.h"
 #include "macros.h"
 #include "cmdfile_handler.h"
 #include "job_queue.h"
