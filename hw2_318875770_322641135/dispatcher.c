@@ -109,7 +109,10 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
             }
             // Parse the worker line into job_cmds array
             parse_worker_line(curr_line_ptr, job_cmds); 
+            // TODO: consider lock mutex of shared queue? pthread_mutex_lock(&mutex_of_shared_jobs_queue);
             push_job(job_cmds, &shared_job_queue);
+            // TODO: consider Signal that a job is available: pthread_cond_signal(&ava_jobs_cond);
+            // TODO: unlock mutex of shared queue? pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
         }
         else {
             Command disp_cmd = {"", 0};

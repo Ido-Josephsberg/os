@@ -1,3 +1,3 @@
 #pragma once
 
-void create_counterxx_files(int num_files);
+void create_countxx_files(int num_files);

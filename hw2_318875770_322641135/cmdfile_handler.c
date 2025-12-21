@@ -12,6 +12,7 @@
 #include "job_queue.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 void parse_cmd(char *cmd_str, Command *cmd) {
     if (cmd_str == NULL || cmd == NULL) {
@@ -41,7 +42,7 @@ void parse_cmd(char *cmd_str, Command *cmd) {
     }
 }
 
-void parse_worker_line(const char *line, Command *job_cmds) {   
+void parse_worker_line(char *line, Command *job_cmds) {   
 
     if (line == NULL || job_cmds == NULL) {
         fprintf(stderr, "Invalid command line: NULL\n");
@@ -61,8 +62,7 @@ void parse_worker_line(const char *line, Command *job_cmds) {
     char *command_str = strtok_r(line, ";\r\n", &saveptr1);
     while (command_str != NULL && i < MAX_COMMANDS_IN_JOB) {
 
-        char *command_str_cp = command_str;
-        parse_cmd(command_str_cp, job_cmds + i);
+        parse_cmd(command_str, job_cmds + i);
         
         // Move to next job command
         i++;
