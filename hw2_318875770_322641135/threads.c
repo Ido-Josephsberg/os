@@ -82,13 +82,20 @@ static void* thread_routine(void* arg) {
             pthread_cond_wait(&ava_jobs_cond, &mutex_of_shared_jobs_queue);
         }
         // Fetch the job from the front of the queue
-        Command *job_to_execute = pop_job(&shared_jobs_queue);
+        Command *job_to_execute = pop_job();
+        // Increment the number of working threads
+        shared_jobs_queue.num_of_working_threads ++;
         // Unlock the mutex for the work queue
         pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
         // Execute the fetched job
         execute_job(job_to_execute);
+        // Decrement the number of working threads
+        pthread_mutex_lock(&mutex_of_shared_jobs_queue);
+        shared_jobs_queue.num_of_working_threads --;
+        pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
         // Free the memory allocated for the job commands
-        free(job_to_execute);
+        if (job_to_execute)
+            free(job_to_execute);
     }   
 }
 
@@ -116,8 +123,7 @@ void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_c
         strcpy((exit_cmd_array + i)->cmd_name, "exit");
         (exit_cmd_array + i)->cmd_arg = NULL;
         // Push exit command into the shared job queue
-        push_job(exit_cmd_array + i, &shared_jobs_queue);
-        // TODO: Where we wake up threads???
+        push_job(exit_cmd_array + i);
     }
     // Status variable for pthread_join
     int status;

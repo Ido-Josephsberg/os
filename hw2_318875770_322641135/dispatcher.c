@@ -26,7 +26,7 @@
 
 /*Assistive Functions For Dispatcher*/
 
-void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread_t *threads_array) {
+static void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread_t *threads_array) {
     // Validate num_counters and create counter files
     if ((num_counters <= 0) || (num_counters > MAX_COUNTER_FILES)) {
         printf("Invalid number of counters: %d\n", num_counters);
@@ -51,25 +51,25 @@ void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread
     create_countxx_files(num_counters);
 }
 
-static void dispatcher_wait(JobQueue* job_queue) {   
+static void dispatcher_wait() {   
     //Lock the mutex to inspect the state safely
-    pthread_mutex_lock(&job_queue->lock);
+    pthread_mutex_lock(&shared_jobs_queue.lock);
 
     // Conditional Wait loop
-    while (job_queue->active_jobs > 0) {
+    while (shared_jobs_queue.num_of_working_threads > 0) {
         /* pthread_cond_wait does the following:
            - Automatically unlocks the mutex so workers can progress.
            - Puts the dispatcher thread into a sleep state (blocking).
            - Re-locks the mutex immediately upon being signaled and waking up.
         */
-        pthread_cond_wait(&job_queue->cond_idle, &job_queue->lock);
+        pthread_cond_wait(&shared_jobs_queue.cond_idle, &shared_jobs_queue.lock);
     }
 
     // Once active_jobs == 0, we have the lock and can proceed
-    pthread_mutex_unlock(&job_queue->lock);
+    pthread_mutex_unlock(&shared_jobs_queue.lock);
 }
 
-void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_enabled) {
+static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_enabled) {
     // This function contains the dispatcher loop logic
 
     // Validate cmd_file
@@ -109,7 +109,7 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
             }
             // Parse the worker line into job_cmds array
             parse_worker_line(curr_line_ptr, job_cmds); 
-            push_job(job_cmds, &shared_job_queue);
+            push_job(job_cmds);
         }
         else {
             Command disp_cmd = {"", 0};
@@ -120,7 +120,7 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
                 msleep(disp_cmd.cmd_arg);
             }
             else if (strcmp(disp_cmd.cmd_name, "dispatcher_wait") == 0) {
-                dispatcher_wait(&shared_job_queue);
+                dispatcher_wait();
             }
             else {
                 printf("Unknown dispatcher command: %s\n", disp_cmd.cmd_name);
@@ -131,7 +131,7 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
     //Convention: closing the cmd_file in the dispatcher main function called dispatcher().
 }
 
-void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
+static void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
     // Cleanup resources, write stats.txt, and exit all threads
     // Allocate exit command array
     Command *exit_cmd_array = (Command*)malloc(sizeof(Command) * num_threads);
