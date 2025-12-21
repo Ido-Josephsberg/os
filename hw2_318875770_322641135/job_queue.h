@@ -24,5 +24,5 @@ typedef struct JobQueue {
     pthread_cond_t cond_idle; // Condition variable to signal when the queue is idle
 } JobQueue;
 
-void push_job(Command **job_cmd, JobQueue *queue);
+void push_job(Command *job_cmd, JobQueue *queue);
 Command** pop_job(JobQueue *queue);

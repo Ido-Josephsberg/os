@@ -3,20 +3,26 @@
 #include <stdio.h>
 
 
-void push_job(Command **job_cmd, JobQueue *queue) {
+void push_job(Command *job_cmd, JobQueue *queue) {
     // Create a new job and add it to the job queue
     // Allocate memory for the new job
     Job* new_job = (Job*)malloc(sizeof(Job));
     // Check for memory allocation failure and notify
     if (new_job == NULL) {
         printf("hw2: memory allocation failed, exiting\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     // Initialize the new job struct
-    new_job->job_cmds = job_cmd;
+    new_job->job_cmds = (Command*)malloc(sizeof(Command) * MAX_COMMANDS_IN_JOB);
+    if (new_job->job_cmds == NULL) {
+        printf("hw2: memory allocation failed, exiting\n");
+        free(new_job);
+        exit(EXIT_FAILURE);
+    }
+    // Copy the job commands into the new job struct
+    memcpy(new_job->job_cmds, job_cmd, sizeof(Command) * MAX_COMMANDS_IN_JOB);
     new_job->next = NULL;
     
-
     // If the queue is empty, set head and tail to the new job
     if (queue->size == 0) {
         queue->head = new_job;

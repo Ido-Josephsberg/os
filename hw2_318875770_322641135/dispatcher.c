@@ -102,8 +102,8 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
         if (strncmp(curr_line_ptr, "worker", 6) == 0) {
             // Process worker command - insert into shared job queue
             Command job_cmds[MAX_COMMANDS_IN_JOB];
-            parse_worker_line(line, job_cmds);      // expect Command*
-            push_job(job_cmds, &shared_job_queue);  // expect Command**
+            parse_worker_line(line, job_cmds); 
+            push_job(job_cmds, &shared_job_queue);
         }
         else {
             Command disp_cmd = {"", 0};
