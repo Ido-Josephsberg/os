@@ -17,3 +17,5 @@
             pthread_mutex_t lock;      // Mutex to protect access to the queue and counter
             pthread_cond_t cond_idle;  // Condition variable to wake the dispatcher
         } JobQueue;
+
+- pop_job() - returns pointer to job_cmds -> after pop it needs to be freed

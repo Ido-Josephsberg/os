@@ -49,13 +49,7 @@ void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread
     create_counterxx_files(num_counters);
 }
 
-void dispatcher_msleep(int milliseconds) {
-    if (usleep(milliseconds * 1000) != 0) { // Convert milliseconds to microseconds, the usleep meansurement argument
-        print_sys_call_error("usleep");
-    }
-}
-
-void dispatcher_wait(JobQueue* job_queue) {   
+static void dispatcher_wait(JobQueue* job_queue) {   
     //Lock the mutex to inspect the state safely
     pthread_mutex_lock(&job_queue->lock);
 
@@ -101,7 +95,7 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
         // Check if worker command
         if (strncmp(curr_line_ptr, "worker", 6) == 0) {
             // Process worker command - insert into shared job queue
-            Command job_cmds[MAX_COMMANDS_IN_JOB];
+            Command* job_cmds = (Command*)malloc(sizeof(Command) * MAX_COMMANDS_IN_JOB);
             parse_worker_line(line, job_cmds); 
             push_job(job_cmds, &shared_job_queue);
         }
@@ -111,12 +105,12 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
             
             // Check dispatcher commands:
             if (strcmp(disp_cmd.cmd_name, "dispatcher_msleep") == 0) {
-                dispatcher_msleep(disp_cmd.cmd_arg);
+                msleep(disp_cmd.cmd_arg);
             }
             else if (strcmp(disp_cmd.cmd_name, "dispatcher_wait") == 0) {
                 dispatcher_wait(&shared_job_queue);
             }
-             {
+            else {
                 printf("Unknown dispatcher command: %s\n", disp_cmd.cmd_name);
             }
         }          
@@ -128,13 +122,13 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
 void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
     // Cleanup resources, write stats.txt, and exit all threads
     // Allocate exit command array
-    Command *exit_cmd_array = malloc(sizeof(Command) * num_threads);
+    Command *exit_cmd_array = (Command*)malloc(sizeof(Command) * num_threads);
     if (exit_cmd_array == NULL) {
         printf("hw2: memory allocation failed, exiting\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     // Exit all threads and join them
-    exit_all_threads(threads_array, num_threads);
+    exit_all_threads(num_threads, threads_array, exit_cmd_array);
     // Free exit command array
     if (exit_cmd_array) {
         free(exit_cmd_array);
@@ -174,7 +168,7 @@ void dispatcher(int argc, char *argv[]) {
 
     // Close command file
     if (fclose(cmd_file) != 0) {
-        printf("Error closing command file %s: %s\n", argv[1], strerror(errno));
+        printf("Error closing command file: %s\n", argv[1]);
         exit(EXIT_FAILURE);
     }
 }

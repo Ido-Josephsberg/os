@@ -25,4 +25,4 @@ typedef struct JobQueue {
 } JobQueue;
 
 void push_job(Command *job_cmd, JobQueue *queue);
-Command** pop_job(JobQueue *queue);
+Command* pop_job(JobQueue *queue);

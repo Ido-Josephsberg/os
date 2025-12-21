@@ -14,9 +14,7 @@
 // TODO: Implement create_threads function which creates num_threads threads.
 // TODO: Implement thread_routine function which each thread will run.
 
-
-
-static void msleep(int milisec) {
+void msleep(int milisec) {
     // Sends the calling thread to sleep to milisec miliseconds
     // Convert miliseconds to microseconds
     int mikrosec = milisec * 1E3;
@@ -46,6 +44,7 @@ static void execute_basic_command(Command *basic_cmd) {
 }
 
 static void execute_job(Command *job_cmd[MAX_COMMANDS_IN_JOB]) {
+    //TODO: Look for memory leaks here!!!
     Command *curr_cmd;
     int arg, counter = 0;
     // Iterate through the commands in the job
@@ -83,11 +82,13 @@ static void* thread_routine(void* arg) {
             pthread_cond_wait(&ava_jobs_cond, &mutex_of_shared_jobs_queue);
         }
         // Fetch the job from the front of the queue
-        Command **job_to_execute = pop_job(&shared_jobs_queue);
+        Command *job_to_execute = pop_job(&shared_jobs_queue);
         // Unlock the mutex for the work queue
         pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
         // Execute the fetched job
         execute_job(job_to_execute);
+        // Free the memory allocated for the job commands
+        free(job_to_execute);
     }   
 }
 

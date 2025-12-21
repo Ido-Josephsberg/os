@@ -13,14 +13,7 @@ void push_job(Command *job_cmd, JobQueue *queue) {
         exit(EXIT_FAILURE);
     }
     // Initialize the new job struct
-    new_job->job_cmds = (Command*)malloc(sizeof(Command) * MAX_COMMANDS_IN_JOB);
-    if (new_job->job_cmds == NULL) {
-        printf("hw2: memory allocation failed, exiting\n");
-        free(new_job);
-        exit(EXIT_FAILURE);
-    }
-    // Copy the job commands into the new job struct
-    memcpy(new_job->job_cmds, job_cmd, sizeof(Command) * MAX_COMMANDS_IN_JOB);
+    new_job->job_cmds = job_cmd;  // take ownership of caller's malloc
     new_job->next = NULL;
     
     // If the queue is empty, set head and tail to the new job
@@ -35,7 +28,8 @@ void push_job(Command *job_cmd, JobQueue *queue) {
     queue->size++;
 }
 
-Command** pop_job(JobQueue *queue) {
+Command* pop_job(JobQueue *queue) {
+    //TODO: NOTE: I've changed pop_job to return Command* instead of Command** -> to match the push_job signature.
     // Remove and return the job commands from the head of the job queue
     // If the queue is empty, return NULL
     if (queue->size == 0) {
@@ -43,7 +37,7 @@ Command** pop_job(JobQueue *queue) {
     }
     // Get the job at the head of the queue
     Job* head_job = queue->head;
-    Command** job_cmds = head_job->job_cmds;
+    Command* job_cmds = head_job->job_cmds;
 
     // Update the head of the queue to the next job
     queue->head = head_job->next;
@@ -57,5 +51,6 @@ Command** pop_job(JobQueue *queue) {
     free(head_job);
 
     // Return pointer to the Commands array of the removed job
+    //TODO: NOTE: TO FREE THE MEMORY
     return job_cmds;
 }
