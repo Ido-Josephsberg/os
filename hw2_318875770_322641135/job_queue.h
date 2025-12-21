@@ -1,9 +1,11 @@
 #pragma once
+
 #include "macros.h"
+#include <pthread.h>
 
 // Command struct representing a single command
 typedef struct {
-    char cmd_name[10];
+    char cmd_name[MAX_CMD_NAME_LENGTH];
     int cmd_arg;
 } Command;
 

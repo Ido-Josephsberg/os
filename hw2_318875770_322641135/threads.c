@@ -3,6 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdio.h>
+#include "global_vars.h"
 #include "system_call_error.h"
 #include "counter_files.h"
 #include "cmdfile_handler.h"

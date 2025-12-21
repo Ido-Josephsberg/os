@@ -15,8 +15,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "dispatcher.h"
+#include "global_vars.h"
 #include "macros.h"
+#include "dispatcher.h"
 #include "counter_files.h"
 #include "job_queue.h"
 #include "cmdfile_handler.h"
@@ -28,33 +29,33 @@
 void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread_t *threads_array) {
     // Validate num_counters and create counter files
     if ((num_counters <= 0) || (num_counters > MAX_COUNTER_FILES)) {
-        fprintf(stderr, "Invalid number of counters: %d\n", num_counters);
+        printf("Invalid number of counters: %d\n", num_counters);
         exit(EXIT_FAILURE);
     }
-    
-    // Create num_threads threads
-    create_num_threads_threads(num_threads, threads_array);
-    // Create counter files
-    create_counterxx_files(num_counters);
+
     // Validate num_threads and create threads
     if ((num_threads <= 0) || (num_threads > MAX_WORKER_THREADS)) {
-        fprintf(stderr, "Invalid number of threads: %d\n", num_threads);
+        printf("Invalid number of threads: %d\n", num_threads);
         exit(EXIT_FAILURE);
     }
+    // Create num_threads threads
+    create_num_threads_threads(num_threads, threads_array);
     // Create worker threads if log_enabled is set
     if (log_enabled) {
         create_threadxx_files(num_threads);
     }
-
+    
+    // Create counter files
+    create_counterxx_files(num_counters);
 }
 
 void dispatcher_msleep(int milliseconds) {
-    usleep(milliseconds * 1000); // Convert milliseconds to microseconds, the usleep meansurement argument
+    if (usleep(milliseconds * 1000) != 0) { // Convert milliseconds to microseconds, the usleep meansurement argument
+        print_sys_call_error("usleep");
+    }
 }
 
-void dispatcher_wait(JobQueue* job_queue) {
-    //TODO: Implement wait logic
-    
+void dispatcher_wait(JobQueue* job_queue) {   
     //Lock the mutex to inspect the state safely
     pthread_mutex_lock(&job_queue->lock);
 
@@ -77,8 +78,7 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
 
     // Validate cmd_file
     if (cmd_file == NULL) {
-        perror("Failed to open command file");
-
+        printf("Failed to open command file");
         exit(EXIT_FAILURE);
     }
 
@@ -92,7 +92,6 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
     while (fgets(line, sizeof(line), cmd_file)) {
                
         // Check if a line is a worker or dispatcher command
-        //int is_worker_cmd = 0; // TODO: Implement logic to determine if it's a worker command
         char* curr_line_ptr = line;
 
         //skip leading whitespaces
@@ -103,11 +102,11 @@ void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_e
         if (strncmp(curr_line_ptr, "worker", 6) == 0) {
             // Process worker command - insert into shared job queue
             Command job_cmds[MAX_COMMANDS_IN_JOB];
-            parse_worker_line(line, job_cmds);
-            push_job(job_cmds, &shared_job_queue);
+            parse_worker_line(line, job_cmds);      // expect Command*
+            push_job(job_cmds, &shared_job_queue);  // expect Command**
         }
         else {
-            Command disp_cmd = {NULL, 0};
+            Command disp_cmd = {"", 0};
             parse_cmd(line, &disp_cmd);
             
             // Check dispatcher commands:
@@ -148,13 +147,13 @@ void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
 void dispatcher(int argc, char *argv[]) {
     // check for correct number of arguments
     if (argc != 5) {
-        fprintf(stderr, "Usage: %s cmdfile.txt num_threads num_counters log_enabled\n", argv[0]);
+        printf("Usage: %s cmdfile.txt num_threads num_counters log_enabled\n", argv[0]);
         exit(EXIT_FAILURE);
     }
     //Extract user argumentsvalues
     FILE *cmd_file = fopen(argv[1], "r");
     if (!cmd_file) {
-        perror("Failed to open command file");
+        printf("Failed to open command file");
         exit(EXIT_FAILURE);
     }
     int num_threads = atoi(argv[2]);
@@ -163,21 +162,19 @@ void dispatcher(int argc, char *argv[]) {
 
     // Create an array to hold thread IDs
     pthread_t threads_array[MAX_WORKER_THREADS];
+
     // Initialize dispatcher
     init_dispatcher(num_counters, num_threads, log_enabled, threads_array);
-    //Dispatcher Loop
-    char line[MAX_JOB_FILE_LINE];  
-    while (fgets(line, sizeof(line), cmd_file)) {
-        // Remove trailing newline if necessary
-        run_dispatcher(cmd_file,num_counters, num_threads, log_enabled);
-    }
-    
+
+    // Run Dispatcher
+    run_dispatcher(cmd_file,num_counters, num_threads, log_enabled);
+        
     // Cleanup, write stats.txt, and exit
     finalize_dispatcher(threads_array, num_threads); 
 
     // Close command file
     if (fclose(cmd_file) != 0) {
-        fprintf(stderr, "Error closing command file %s: %s\n", argv[1], strerror(errno));
+        printf("Error closing command file %s: %s\n", argv[1], strerror(errno));
         exit(EXIT_FAILURE);
     }
 }

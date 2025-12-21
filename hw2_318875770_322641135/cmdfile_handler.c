@@ -4,7 +4,7 @@
     // Commands starting with worker should be assigned to shared work queue (to be executed by worker threads
     // when available).
 
-//TODO: Hangle log files? 
+//TODO: Handle log files? 
 
 #include "dispatcher.h"
 #include "macros.h"
@@ -72,9 +72,4 @@ void parse_worker_line(const char *line, Command *job_cmds) {
     }
 
     //TODO: Hangle LOG FILES? 
-}
-    
-
-void insert_job_into_queue(/*TODO: complete args*/) {
-    //TODO: Implement job insertion logic
 }
