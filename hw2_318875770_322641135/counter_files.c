@@ -14,7 +14,7 @@
 #include "system_call_error.h"
 
 
-void create_counterxx_files(int num_files) {
+void create_countxx_files(int num_files) {
     if (num_files <= 0) {
         printf("Invalid num_files: %d\n", num_files);
         //close cmd_file in dispatcher main function
@@ -25,7 +25,7 @@ void create_counterxx_files(int num_files) {
     for (int i = 1; i <= num_files; i++) {
         char filename[MAX_FILE_NAME];
         // Write filename into file
-        snprintf(filename, sizeof(filename), "count_%02d.txt", i);
+        snprintf(filename, sizeof(filename), "count%02d.txt", i);
         
         //Opens file for writing, return error if fails
         FILE *fp = fopen(filename, "w");
@@ -54,7 +54,7 @@ static void inc_dec_counter_file(int file_number, int inc_flag) {
     // Increment or decrement (increment if inc_flag is 1) file counter number file_number.
     // File path
     char file_name[12];
-    sprintf(file_name, "counter%02d.txt", file_number);
+    sprintf(file_name, "count%02d.txt", file_number);
     // Lock the mutex corresponding to the file counter before accessing it to prevent race conditions.
     pthread_mutex_lock(file_counters_mutexes + file_number);
     // Open file counter number file_number

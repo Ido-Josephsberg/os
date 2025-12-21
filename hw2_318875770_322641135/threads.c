@@ -3,6 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "global_vars.h"
 #include "system_call_error.h"
 #include "counter_files.h"
@@ -29,36 +30,31 @@ static void execute_basic_command(Command *basic_cmd) {
     if (strcmp(basic_cmd->cmd_name, "exit") == 0) {
         pthread_exit(NULL);
     }
-    // Get the argument of the command as integer
-    int arg = atoi(basic_cmd->cmd_arg);
     // If the command is "msleep", call msleep with the provided argument
     if (strcmp(basic_cmd->cmd_name, "msleep") == 0)
-        msleep(arg);
+        msleep(basic_cmd->cmd_arg);
     // If the command is "increment", call increment with the provided argument
     else if (strcmp(basic_cmd->cmd_name, "increment") == 0)
-        increment(arg);
+        increment(basic_cmd->cmd_arg);
     // Else, i.e. the command is "decrement", call decrement with the provided argument
     else
-        decrement(arg);
+        decrement(basic_cmd->cmd_arg);
 
 }
 
-static void execute_job(Command *job_cmd[MAX_COMMANDS_IN_JOB]) {
+static void execute_job(Command job_cmd[MAX_COMMANDS_IN_JOB]) {
     //TODO: Look for memory leaks here!!!
     Command *curr_cmd;
-    int arg, counter = 0;
     // Iterate through the commands in the job
-    for(int i = 0; job_cmd[i] != NULL; i++) {
+    for(int i = 0; job_cmd[i].cmd_name[0] != '\0'; i++) {
         // Current command
-        curr_cmd = job_cmd[i];
+        curr_cmd = job_cmd + i;
         // If the comand is repeat, execute next command arg times
         if (strcmp(curr_cmd->cmd_name, "repeat") == 0) {
-            // Argument of the command as integer
-            arg = atoi(curr_cmd->cmd_arg);
             // Execute the remaining commands arg times
-            for (int count = 0; count < arg; count++) {
-                for (int j = i + 1; job_cmd[j] != NULL; j++) {
-                    curr_cmd = job_cmd[j];
+            for (int count = 0; count < curr_cmd->cmd_arg; count++) {
+                for (int j = i + 1; job_cmd[j].cmd_name[0] != '\0'; j++) {
+                    curr_cmd = job_cmd + j;
                     execute_basic_command(curr_cmd);
                 }
             }
@@ -97,6 +93,7 @@ static void* thread_routine(void* arg) {
         if (job_to_execute)
             free(job_to_execute);
     }   
+    pthread_exit(NULL);
 }
 
 void create_num_threads_threads(int num_threads, pthread_t *threads_array) {
@@ -121,7 +118,7 @@ void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_c
     for (int i = 0; i < num_threads; i++) {
         // Create exit command
         strcpy((exit_cmd_array + i)->cmd_name, "exit");
-        (exit_cmd_array + i)->cmd_arg = NULL;
+        (exit_cmd_array + i)->cmd_arg = 0;
         // Push exit command into the shared job queue
         push_job(exit_cmd_array + i);
     }

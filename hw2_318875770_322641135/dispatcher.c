@@ -97,16 +97,17 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
         // Check if worker command
         if (strncmp(curr_line_ptr, "worker", 6) == 0) {
             // Process worker command - insert into shared job queue
-            Command* job_cmds = (Command*)malloc(sizeof(Command) * MAX_COMMANDS_IN_JOB);
+            Command* job_cmds = (Command*)malloc(sizeof(Command) * (MAX_COMMANDS_IN_JOB + 1));
             if (job_cmds == NULL) {
                 printf("hw2: memory allocation failed, exiting\n");
                 exit(EXIT_FAILURE);
             }
+            // TODO: REMOVE Remove remove
             //init job_cmds to empty commands
-            for (int i = 0; i < MAX_COMMANDS_IN_JOB; i++) {
-                strcpy((job_cmds + i)->cmd_name, "");
-                (job_cmds + i)->cmd_arg = 0;
-            }
+            // for (int i = 0; i < MAX_COMMANDS_IN_JOB; i++) {
+            //     strcpy((job_cmds + i)->cmd_name, "");
+            //     (job_cmds + i)->cmd_arg = 0;
+            // }
             // Parse the worker line into job_cmds array
             parse_worker_line(curr_line_ptr, job_cmds); 
             push_job(job_cmds);
