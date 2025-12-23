@@ -36,9 +36,6 @@ static void init_dispatcher(int num_counters, int num_threads, int log_enabled, 
         printf("Invalid number of counters: %d\n", num_counters);
         exit(EXIT_FAILURE);
     }
-
-    //TODO: Do we need to initialize mutexes for counters here???
-
     // Validate num_threads and create threads
     if ((num_threads <= 0) || (num_threads > MAX_WORKER_THREADS)) {
         printf("Invalid number of threads: %d\n", num_threads);
@@ -46,13 +43,25 @@ static void init_dispatcher(int num_counters, int num_threads, int log_enabled, 
     }
     // Create num_threads threads
     create_num_threads_threads(num_threads, threads_array);
-    // Create worker threads if log_enabled is set
+    // Create worker threads and dispatcher.txt log if log_enabled is set
     if (log_enabled) {
         create_threadxx_files(num_threads);
+        // Create dispatcher.txt log
+        FILE *fp = fopen("dispatcher.txt", "w");
+        if (fp == NULL) {
+            printf("Error creating %s\n", "dispatcher.txt");
+            //close cmd_file in dispatcher main function
+            exit(EXIT_FAILURE);
+        }
+        if (fclose(fp) != 0) {
+            printf("Error closing %s\n", "dispatcher.txt");
+            //close cmd_file in dispatcher main function
+            exit(EXIT_FAILURE);
+        }
     }
-    
     // Create counter files
     create_countxx_files(num_counters);
+    // Creadete dispatcher.txt log
 }
 
 static void dispatcher_wait() {   
@@ -83,7 +92,7 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     }
 
     // Initialize shared Queue:
-    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0}; // Initialize an empty job queue
+    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, log_enabled}; // Initialize an empty job queue
     pthread_mutex_init(&shared_jobs_queue.lock, NULL);
     pthread_cond_init(&shared_jobs_queue.cond_idle, NULL);
 
@@ -119,6 +128,9 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
             parse_cmd(curr_line_ptr, &disp_cmd);
             
             // Check dispatcher commands:
+            if (log_enabled){
+                write_into_log_file(line, 0, 0, 1);
+            }
             if (strcmp(disp_cmd.cmd_name, "dispatcher_msleep") == 0) {
                 msleep(disp_cmd.cmd_arg);
             }

@@ -13,7 +13,7 @@ typedef struct {
 typedef struct Job {
     Command* job_cmds; // pointer to array of Command pointers in the job
     struct Job* next; // Pointer to the next job in the queue
-    char job_line[MAX_JOB_FILE_LINE]; // Original job line for logging purposes
+    char* job_line[MAX_JOB_FILE_LINE]; // Original job line for logging purposes
 } Job;
 
 typedef struct JobQueue {
