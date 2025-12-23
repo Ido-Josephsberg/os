@@ -3,7 +3,6 @@
 #include "job_queue.h"
 #include "global_vars.h"
 
-
 void push_job(Command *job_cmd) {
     // Create a new job and add it to the job queue
     // Allocate memory for the new job
@@ -16,26 +15,25 @@ void push_job(Command *job_cmd) {
     // Initialize the new job struct
     new_job->job_cmds = job_cmd;  // take ownership of caller's malloc
     new_job->next = NULL;
-    
     // If the queue is empty, set head and tail to the new job and wake up a thread
     if (shared_jobs_queue.size == 0) {
         shared_jobs_queue.head = new_job;
         shared_jobs_queue.tail = new_job;
-        pthread_cond_signal(&ava_jobs_cond);
     } else {
         // Otherwise, add the new job to the end of the queue
         shared_jobs_queue.tail->next = new_job;
         shared_jobs_queue.tail = new_job;
     }
     shared_jobs_queue.size++;
+    // Signal waiting threads that a new job is available.
+    pthread_cond_signal(&ava_jobs_cond);
 }
 
 Command* pop_job() {
-    // Remove and return the job commands from the head of the job queue
+    // Remove and return the job commands from the head of the job queue. Call with the job queue mutex locked.
     // If the queue is empty, return NULL
-    if (shared_jobs_queue.size == 0) {
+    if (shared_jobs_queue.size == 0) 
         return NULL;
-    }
     // Get the job at the head of the queue
     Job* head_job = shared_jobs_queue.head;
     Command* job_cmds = head_job->job_cmds;

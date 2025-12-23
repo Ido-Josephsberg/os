@@ -27,15 +27,15 @@ void msleep(int milisec) {
 static void execute_basic_command(Command *basic_cmd) {
     // Execute a basic command (msleep, increment, decrement, exit)
     // If the command is exit, kill the calling thread
-    if (strcmp(basic_cmd->cmd_name, "exit") == 0) {
+    if (strcmp(basic_cmd->cmd_name, "exit") == 0)
         pthread_exit(NULL);
-    }
     // If the command is "msleep", call msleep with the provided argument
     if (strcmp(basic_cmd->cmd_name, "msleep") == 0)
         msleep(basic_cmd->cmd_arg);
     // If the command is "increment", call increment with the provided argument
     else if (strcmp(basic_cmd->cmd_name, "increment") == 0)
         increment(basic_cmd->cmd_arg);
+
     // Else, i.e. the command is "decrement", call decrement with the provided argument
     else
         decrement(basic_cmd->cmd_arg);
@@ -71,28 +71,30 @@ static void* thread_routine(void* arg) {
     while (1) {
         // Conditinal wait until a job is available in the work queue
         // First, lock the mutex for the work queue
-        pthread_mutex_lock(&mutex_of_shared_jobs_queue);
+        pthread_mutex_lock(&shared_jobs_queue.lock);
         // Wait until there is at least one job in the queue
         while (!shared_jobs_queue.size) {
             // Wait on the condition variable for new jobs and unlock the mutex while waiting
-            pthread_cond_wait(&ava_jobs_cond, &mutex_of_shared_jobs_queue);
+            pthread_cond_wait(&ava_jobs_cond, &shared_jobs_queue.lock);
         }
         // Fetch the job from the front of the queue
         Command *job_to_execute = pop_job();
         // Increment the number of working threads
         shared_jobs_queue.num_of_working_threads ++;
         // Unlock the mutex for the work queue
-        pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
+        pthread_mutex_unlock(&shared_jobs_queue.lock);
         // Execute the fetched job
         execute_job(job_to_execute);
         // Decrement the number of working threads
-        pthread_mutex_lock(&mutex_of_shared_jobs_queue);
+        pthread_mutex_lock(&shared_jobs_queue.lock);
         shared_jobs_queue.num_of_working_threads --;
-        pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
+        if (shared_jobs_queue.size == 0)
+            pthread_cond_signal(&shared_jobs_queue.cond_idle);
+        pthread_mutex_unlock(&shared_jobs_queue.lock);
         // Free the memory allocated for the job commands
         if (job_to_execute)
             free(job_to_execute);
-    }   
+    }
     pthread_exit(NULL);
 }
 
@@ -112,15 +114,19 @@ void create_num_threads_threads(int num_threads, pthread_t *threads_array) {
 }
 
 void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_cmd_array) {
-    // Push num_threads exit commands into the shared job queue to terminate all threads and 
+    // Push num_threads exit commands into the shared job queue to terminate all threads and
     // wait for their termination
     // Push exit commands into the shared job queue
     for (int i = 0; i < num_threads; i++) {
         // Create exit command
         strcpy((exit_cmd_array + i)->cmd_name, "exit");
         (exit_cmd_array + i)->cmd_arg = 0;
+        // Lock the job queue mutex before pushing the exit command
+        pthread_mutex_lock(&shared_jobs_queue.lock);
         // Push exit command into the shared job queue
         push_job(exit_cmd_array + i);
+        // Unlock the job queue mutex
+        pthread_mutex_unlock(&shared_jobs_queue.lock);
     }
     // Status variable for pthread_join
     int status;

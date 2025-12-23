@@ -1,6 +1,6 @@
 // Create num_files counter files and initialize them to zero.
 
-// IDO NOTE THE CHANGE I'VE MADE: pthread_mutex_unlock(&file_counters_mutexes[file_number]), pthread_mutex_unlock expects a poiner 
+// IDO NOTE THE CHANGE I'VE MADE: pthread_mutex_unlock(&file_counters_mutexes[file_number]), pthread_mutex_unlock expects a poiner
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -13,6 +13,8 @@
 #include <pthread.h>
 #include "system_call_error.h"
 
+// Global array of mutexes for counter files
+pthread_mutex_t file_counters_mutexes[MAX_COUNTER_FILES];
 
 void create_countxx_files(int num_files) {
     if (num_files <= 0) {
@@ -26,7 +28,7 @@ void create_countxx_files(int num_files) {
         char filename[MAX_FILE_NAME];
         // Write filename into file
         snprintf(filename, sizeof(filename), "count%02d.txt", i);
-        
+
         //Opens file for writing, return error if fails
         FILE *fp = fopen(filename, "w");
         if (fp == NULL) {
@@ -47,7 +49,9 @@ void create_countxx_files(int num_files) {
             //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
         }
-    }    
+        // Initialize mutex for this file counter
+        pthread_mutex_init(file_counters_mutexes + i, NULL);
+    }
 }
 
 static void inc_dec_counter_file(int file_number, int inc_flag) {
