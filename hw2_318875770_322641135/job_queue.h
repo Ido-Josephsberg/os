@@ -21,6 +21,7 @@ typedef struct JobQueue {
     Job* tail; // Pointer to the tail of the job queue
     int size; // Current size of the job queue
     int num_of_working_threads; // Number of threads currently working on jobs
+    int exit_flag; // Flag to indicate if threads should exit
     pthread_mutex_t lock; // Mutex for synchronizing access to the job queue
     pthread_cond_t cond_idle; // Condition variable to signal when the queue is idle
 } JobQueue;

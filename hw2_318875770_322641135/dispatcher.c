@@ -83,7 +83,7 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     }
 
     // Initialize shared Queue:
-    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0}; // Initialize an empty job queue
+    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, 0}; // Initialize an empty job queue
     pthread_mutex_init(&shared_jobs_queue.lock, NULL);
     pthread_cond_init(&shared_jobs_queue.cond_idle, NULL);
 
@@ -136,17 +136,23 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
 
 static void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
     // Cleanup resources, write stats.txt, and exit all threads
-    // Allocate exit command array
-    Command *exit_cmd_array = (Command*)malloc(sizeof(Command) * num_threads);
-    if (exit_cmd_array == NULL) {
-        printf("hw2: memory allocation failed, exiting\n");
-        exit(EXIT_FAILURE);
-    }
-    // Exit all threads and join them
-    exit_all_threads(num_threads, threads_array, exit_cmd_array);
-    // Free exit command array
-    if (exit_cmd_array) {
-        free(exit_cmd_array);
+
+    // Lock the job queue mutex to set exit flag
+    pthread_mutex_lock(&shared_jobs_queue.lock);
+    shared_jobs_queue.exit_flag = 1;
+    // Wake up all worker threads to let them exit
+    pthread_cond_broadcast(&ava_jobs_cond);
+    // Unlock the job queue mutex
+    pthread_mutex_unlock(&shared_jobs_queue.lock);
+    // Status variable for pthread_join
+    int status;
+    // Join all worker threads
+    for (int i = 0; i < num_threads; i++) {
+        status = pthread_join(threads_array[i], NULL);
+        if (status != 0) {
+            printf("hw2: pthread_join failed: %d,\nexiting\n", status);
+            exit(EXIT_FAILURE);
+        }
     }
     // TODO: Write stats.txt if needed
 }

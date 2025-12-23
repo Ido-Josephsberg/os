@@ -26,10 +26,7 @@ void msleep(int milisec) {
 }
 
 static void execute_basic_command(Command *basic_cmd) {
-    // Execute a basic command (msleep, increment, decrement, exit)
-    // If the command is exit, kill the calling thread
-    if (strcmp(basic_cmd->cmd_name, "exit") == 0)
-        pthread_exit(NULL);
+    // Execute a basic command (msleep, increment, decrement)
     // If the command is "msleep", call msleep with the provided argument
     if (strcmp(basic_cmd->cmd_name, "msleep") == 0)
         msleep(basic_cmd->cmd_arg);
@@ -73,10 +70,16 @@ static void* thread_routine(void* arg) {
         // Conditinal wait until a job is available in the work queue
         // First, lock the mutex for the work queue
         pthread_mutex_lock(&shared_jobs_queue.lock);
-        // Wait until there is at least one job in the queue
-        while (!shared_jobs_queue.size) {
+        // Wait until there is at least one job in the queue or exit flag is set
+        while (!shared_jobs_queue.size && !shared_jobs_queue.exit_flag) {
             // Wait on the condition variable for new jobs and unlock the mutex while waiting
             pthread_cond_wait(&ava_jobs_cond, &shared_jobs_queue.lock);
+        }
+        if (shared_jobs_queue.exit_flag && shared_jobs_queue.size == 0) {
+            // Unlock the mutex for the work queue
+            pthread_mutex_unlock(&shared_jobs_queue.lock);
+            // Exit the thread if exit flag is set and there are no more jobs
+            pthread_exit(NULL);
         }
         // Fetch the job from the front of the queue
         Command *job_to_execute = pop_job();
@@ -113,34 +116,3 @@ void create_num_threads_threads(int num_threads, pthread_t *threads_array) {
         }
     }
 }
-
-void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_cmd_array) {
-    // Push num_threads exit commands into the shared job queue to terminate all threads and
-    // wait for their termination
-    // Push exit commands into the shared job queue
-    for (int i = 0; i < num_threads; i++) {
-        // Create exit command
-        strcpy((exit_cmd_array + i)->cmd_name, "exit");
-        (exit_cmd_array + i)->cmd_arg = 0;
-        // Lock the job queue mutex before pushing the exit command
-        pthread_mutex_lock(&shared_jobs_queue.lock);
-        // Push exit command into the shared job queue
-        push_job(exit_cmd_array + i,NULL);
-        // Unlock the job queue mutex
-        pthread_mutex_unlock(&shared_jobs_queue.lock);
-    }
-    // Status variable for pthread_join
-    int status;
-    // Wait for all threads to terminate
-    for (int i = 0; i < num_threads; i++) {
-        status = pthread_join(threads_array[i], NULL);
-        if (status != 0) {
-            printf("hw2: pthread_join failed: %s,\nexiting\n", strerror(status));
-            exit(EXIT_FAILURE);
-        }
-    }
-}
-
-
-
-
