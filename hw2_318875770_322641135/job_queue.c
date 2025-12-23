@@ -16,7 +16,7 @@ void push_job(Command *job_cmd, char* line) {
     // Initialize the new job struct
     new_job->job_cmds = job_cmd;  // take ownership of caller's malloc
     new_job->next = NULL;
-    strncpy((char*)new_job->job_line, line, MAX_JOB_FILE_LINE - 1); //TODO: doesnt it need to be wothout -1
+    strncpy(new_job->job_line, line, MAX_JOB_FILE_LINE - 1);
     new_job->job_line[MAX_JOB_FILE_LINE - 1] = '\0'; // Ensure null-termination
 
     // If the queue is empty, set head and tail to the new job and wake up a thread
@@ -33,14 +33,14 @@ void push_job(Command *job_cmd, char* line) {
     pthread_cond_signal(&ava_jobs_cond);
 }
 
-Command* pop_job() {
+Job* pop_job() {
     // Remove and return the job commands from the head of the job queue. Call with the job queue mutex locked.
     // If the queue is empty, return NULL
     if (shared_jobs_queue.size == 0) 
         return NULL;
     // Get the job at the head of the queue
     Job* head_job = shared_jobs_queue.head;
-    Command* job_cmds = head_job->job_cmds;
+    Job* job = head_job;
 
     // Update the head of the queue to the next job
     shared_jobs_queue.head = head_job->next;
@@ -50,10 +50,6 @@ Command* pop_job() {
     }
     shared_jobs_queue.size--;
 
-    // Free the memory allocated for the removed job struct
-    free(head_job);
-
-    // Return pointer to the Commands array of the removed job
-    //TODO NOTE: TO FREE THE MEMORY
-    return job_cmds;
+    // Return pointer to the removed job
+    return job;
 }
