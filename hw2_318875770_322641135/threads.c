@@ -87,12 +87,12 @@ static void* thread_routine(void* arg) {
         pthread_mutex_unlock(&shared_jobs_queue.lock);
         // Write START to threadxx.txt if needed
         if (shared_jobs_queue.log_enabled)
-            write_into_log_file(job_to_execute->job_line, thread_index, 1, 0);
+            write_into_log_file(job_to_execute->job_line, thread_index, 1, 0, 0);
         // Execute the fetched job
         execute_job(job_to_execute->job_cmds);
         // Write END to threadxx.txt if needed
         if (shared_jobs_queue.log_enabled)
-            write_into_log_file(job_to_execute->job_line, thread_index, 0, 0);
+            write_into_log_file(job_to_execute->job_line, thread_index, 0, 0, 0);
         // Decrement the number of working threads
         pthread_mutex_lock(&shared_jobs_queue.lock);
         shared_jobs_queue.num_of_working_threads --;
