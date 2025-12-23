@@ -83,14 +83,17 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     }
 
     // Initialize shared Queue:
-    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, 0}; // Initialize an empty job queue
+    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, 0, 0, 0, 0, -1, 0}; // Initialize an empty job queue
     pthread_mutex_init(&shared_jobs_queue.lock, NULL);
     pthread_cond_init(&shared_jobs_queue.cond_idle, NULL);
 
     // Dispatcher Loop
     char line[MAX_JOB_FILE_LINE];
+    // Variable to hold time after reading each line for logging purposes
+    long long time_after_reading_line_ms;
     while (fgets(line, sizeof(line), cmd_file)) {
-               
+        // Save the time after reading the line for logging purposes
+        time_after_reading_line_ms = get_elapsed_time_ms();
         // Check if a line is a worker or dispatcher command
         char* curr_line_ptr = line;
 
@@ -111,7 +114,7 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
             parse_worker_line(curr_line_ptr + 6, job_cmds);
             // Lock the job queue mutex before pushing the job
             pthread_mutex_lock(&shared_jobs_queue.lock);
-            push_job(job_cmds,line);
+            push_job(job_cmds, line, time_after_reading_line_ms);
             pthread_mutex_unlock(&shared_jobs_queue.lock);
         }
         else {

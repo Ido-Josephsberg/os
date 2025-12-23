@@ -65,6 +65,10 @@ static void execute_job(Command job_cmd[MAX_COMMANDS_IN_JOB]) {
 }
 
 static void* thread_routine(void* arg) {
+    // Pointer to job commands to execute
+    Job *job_to_execute;
+    // End time of job execution
+    long long end_time_ms, turnaround_time_ms;
     // Main routine for each thread - fetch and execute jobs from the shared work queue
     int thread_index = *(int*)arg;
     while (1) {
@@ -83,7 +87,7 @@ static void* thread_routine(void* arg) {
             pthread_exit(NULL);
         }
         // Fetch the job from the front of the queue
-        Job *job_to_execute = pop_job();
+        job_to_execute = pop_job();
         // Increment the number of working threads
         shared_jobs_queue.num_of_working_threads ++;
         // Unlock the mutex for the work queue
@@ -92,13 +96,21 @@ static void* thread_routine(void* arg) {
         if (shared_jobs_queue.log_enabled)
             write_into_log_file(job_to_execute->job_line, thread_index, 1, 0);
         // Execute the fetched job
-        execute_job(job_to_execute->job_cmds);
-        // Write END to threadxx.txt if needed
-        if (shared_jobs_queue.log_enabled)
-            write_into_log_file(job_to_execute->job_line, thread_index, 0, 0);
+        execute_job(job_to_execute);
+        // Get end time after job execution for logging purposes
+        end_time_ms = get_elapsed_time_ms();
+        turnaround_time_ms = end_time_ms - job_to_execute->time_after_reading_line_ms;
         // Decrement the number of working threads
         pthread_mutex_lock(&shared_jobs_queue.lock);
         shared_jobs_queue.num_of_working_threads --;
+        // Add turnaround time to total and update min/max if needed
+        shared_jobs_queue.total_turnaround_time_ms += turnaround_time_ms;
+        if (turnaround_time_ms < shared_jobs_queue.min_turnaround_time_ms || shared_jobs_queue.min_turnaround_time_ms == -1)
+            shared_jobs_queue.min_turnaround_time_ms = turnaround_time_ms;
+        if (turnaround_time_ms > shared_jobs_queue.max_turnaround_time_ms)
+            shared_jobs_queue.max_turnaround_time_ms = turnaround_time_ms;
+
+        // Signal to waiting dispatcher if the queue is now idle
         if (shared_jobs_queue.size == 0)
             pthread_cond_signal(&shared_jobs_queue.cond_idle);
         pthread_mutex_unlock(&shared_jobs_queue.lock);
