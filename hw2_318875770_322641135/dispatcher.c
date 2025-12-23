@@ -24,6 +24,10 @@
 #include "threads.h"
 #include "log_files.h"
 
+// Declare Global available jobs condition variable
+pthread_cond_t ava_jobs_cond = PTHREAD_COND_INITIALIZER;
+// Declare Global shared jobs queue
+JobQueue shared_jobs_queue;
 /*Assistive Functions For Dispatcher*/
 
 static void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread_t *threads_array) {
@@ -56,7 +60,7 @@ static void dispatcher_wait() {
     pthread_mutex_lock(&shared_jobs_queue.lock);
 
     // Conditional Wait loop
-    while (shared_jobs_queue.num_of_working_threads > 0) {
+    while (shared_jobs_queue.num_of_working_threads > 0 || shared_jobs_queue.size > 0) {
         /* pthread_cond_wait does the following:
            - Automatically unlocks the mutex so workers can progress.
            - Puts the dispatcher thread into a sleep state (blocking).
@@ -79,9 +83,9 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     }
 
     // Initialize shared Queue:
-    JobQueue shared_job_queue = {NULL, NULL, 0, 0}; // Initialize an empty job queue
-    pthread_mutex_init(&shared_job_queue.lock, NULL);
-    pthread_cond_init(&shared_job_queue.cond_idle, NULL);
+    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0}; // Initialize an empty job queue
+    pthread_mutex_init(&shared_jobs_queue.lock, NULL);
+    pthread_cond_init(&shared_jobs_queue.cond_idle, NULL);
 
     // Dispatcher Loop
     char line[MAX_JOB_FILE_LINE];
@@ -109,15 +113,11 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
             //     (job_cmds + i)->cmd_arg = 0;
             // }
             // Parse the worker line into job_cmds array
-            parse_worker_line(curr_line_ptr, job_cmds); 
-<<<<<<< HEAD
-            // TODO: consider lock mutex of shared queue? pthread_mutex_lock(&mutex_of_shared_jobs_queue);
-            push_job(job_cmds, &shared_job_queue);
-            // TODO: consider Signal that a job is available: pthread_cond_signal(&ava_jobs_cond);
-            // TODO: unlock mutex of shared queue? pthread_mutex_unlock(&mutex_of_shared_jobs_queue);
-=======
+            parse_worker_line(curr_line_ptr + 6, job_cmds);
+            // Lock the job queue mutex before pushing the job
+            pthread_mutex_lock(&shared_jobs_queue.lock);
             push_job(job_cmds);
->>>>>>> dev_hw2
+            pthread_mutex_unlock(&shared_jobs_queue.lock);
         }
         else {
             Command disp_cmd = {"", 0};

@@ -43,7 +43,7 @@ void parse_cmd(char *cmd_str, Command *cmd) {
 void parse_worker_line(char *line, Command *job_cmds) {   
 
     if (line == NULL || job_cmds == NULL) {
-        fprintf(stderr, "Invalid command line: NULL\n");
+        printf("Invalid command line: NULL\n");
         // exit() - all open files are automatically closed by the C runtime / OS.
         exit(EXIT_FAILURE);
     }
