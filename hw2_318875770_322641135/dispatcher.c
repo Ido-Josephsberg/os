@@ -23,6 +23,7 @@
 #include "cmdfile_handler.h"
 #include "threads.h"
 #include "log_files.h"
+#include "stats.h"
 
 // Declare Global available jobs condition variable
 pthread_cond_t ava_jobs_cond = PTHREAD_COND_INITIALIZER;
@@ -169,7 +170,8 @@ static void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
             exit(EXIT_FAILURE);
         }
     }
-    // TODO: Write stats.txt if needed
+    // Create stats.txt file
+    create_stats_file();
 }
 
 /*Main Dispatcher Function*/
