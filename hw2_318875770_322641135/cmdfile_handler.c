@@ -5,18 +5,19 @@
     // when available).
 
 //TODO: Handle log files? 
-
-#include "dispatcher.h"
-#include "macros.h"
-#include "cmdfile_handler.h"
-#include "job_queue.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+<<<<<<< HEAD
+=======
+#include "macros.h"
+#include "job_queue.h"
+#include "cmdfile_handler.h"
+>>>>>>> dev_hw2
 
 void parse_cmd(char *cmd_str, Command *cmd) {
     if (cmd_str == NULL || cmd == NULL) {
-        fprintf(stderr, "Invalid command string or command struct: NULL\n");
+        printf("Invalid command string or command struct: NULL\n");
         exit(EXIT_FAILURE);
     }
 
@@ -26,7 +27,7 @@ void parse_cmd(char *cmd_str, Command *cmd) {
     char *arg_str = strtok_r(NULL, " \t\n", &saveptr);
 
     if (name == NULL) {
-        fprintf(stderr, "Invalid command format: no command name\n");
+        printf("Invalid command format: no command name\n");
         exit(EXIT_FAILURE);
     }
 
@@ -70,6 +71,7 @@ void parse_worker_line(char *line, Command *job_cmds) {
         // Move to the next command string after the next semicolon
         command_str = strtok_r(NULL, ";\r\n", &saveptr1);
     }
+    job_cmds[i] = (Command) { "", 0 }; // Mark the end of commands
 
     //TODO: Hangle LOG FILES? 
 }

@@ -5,8 +5,4 @@
 #include "job_queue.h"
 
 // Dispatcher functions
-void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread_t *threads_array);
-static void dispatcher_wait(JobQueue* job_queue);
-void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_enabled);
-void finalize_dispatcher(pthread_t *threads_array, int num_threads);
 void dispatcher(int argc, char *argv[]);

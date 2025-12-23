@@ -1,9 +1,10 @@
-#include "job_queue.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "job_queue.h"
+#include "global_vars.h"
 
 
-void push_job(Command *job_cmd, JobQueue *queue) {
+void push_job(Command *job_cmd) {
     // Create a new job and add it to the job queue
     // Allocate memory for the new job
     Job* new_job = (Job*)malloc(sizeof(Job));
@@ -16,35 +17,36 @@ void push_job(Command *job_cmd, JobQueue *queue) {
     new_job->job_cmds = job_cmd;  // take ownership of caller's malloc
     new_job->next = NULL;
     
-    // If the queue is empty, set head and tail to the new job
-    if (queue->size == 0) {
-        queue->head = new_job;
-        queue->tail = new_job;
+    // If the queue is empty, set head and tail to the new job and wake up a thread
+    if (shared_jobs_queue.size == 0) {
+        shared_jobs_queue.head = new_job;
+        shared_jobs_queue.tail = new_job;
+        pthread_cond_signal(&ava_jobs_cond);
     } else {
         // Otherwise, add the new job to the end of the queue
-        queue->tail->next = new_job;
-        queue->tail = new_job;
+        shared_jobs_queue.tail->next = new_job;
+        shared_jobs_queue.tail = new_job;
     }
-    queue->size++;
+    shared_jobs_queue.size++;
 }
 
-Command* pop_job(JobQueue *queue) {
+Command* pop_job() {
     // Remove and return the job commands from the head of the job queue
     // If the queue is empty, return NULL
-    if (queue->size == 0) {
+    if (shared_jobs_queue.size == 0) {
         return NULL;
     }
     // Get the job at the head of the queue
-    Job* head_job = queue->head;
+    Job* head_job = shared_jobs_queue.head;
     Command* job_cmds = head_job->job_cmds;
 
     // Update the head of the queue to the next job
-    queue->head = head_job->next;
+    shared_jobs_queue.head = head_job->next;
     // If the queue is now empty, update the tail to NULL
-    if (queue->head == NULL) {
-        queue->tail = NULL;
+    if (shared_jobs_queue.head == NULL) {
+        shared_jobs_queue.tail = NULL;
     }
-    queue->size--;
+    shared_jobs_queue.size--;
 
     // Free the memory allocated for the removed job struct
     free(head_job);

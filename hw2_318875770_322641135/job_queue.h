@@ -19,10 +19,10 @@ typedef struct JobQueue {
     Job* head; // Pointer to the head of the job queue
     Job* tail; // Pointer to the tail of the job queue
     int size; // Current size of the job queue
-    int active_jobs; // Number of active jobs being processed
+    int num_of_working_threads; // Number of threads currently working on jobs
     pthread_mutex_t lock; // Mutex for synchronizing access to the job queue
     pthread_cond_t cond_idle; // Condition variable to signal when the queue is idle
 } JobQueue;
 
-void push_job(Command *job_cmd, JobQueue *queue);
-Command* pop_job(JobQueue *queue);
+void push_job(Command *job_cmd);
+Command* pop_job();
