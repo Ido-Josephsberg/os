@@ -13,6 +13,7 @@ typedef struct {
 typedef struct Job {
     Command* job_cmds; // pointer to array of Command pointers in the job
     struct Job* next; // Pointer to the next job in the queue
+    char* job_line[MAX_JOB_FILE_LINE]; // Original job line for logging purposes
 } Job;
 
 typedef struct JobQueue {
@@ -24,5 +25,5 @@ typedef struct JobQueue {
     pthread_cond_t cond_idle; // Condition variable to signal when the queue is idle
 } JobQueue;
 
-void push_job(Command *job_cmd);
+void push_job(Command *job_cmd, char* line);
 Command* pop_job();

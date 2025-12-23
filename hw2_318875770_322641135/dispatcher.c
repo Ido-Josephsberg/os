@@ -106,17 +106,12 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
                 printf("hw2: memory allocation failed, exiting\n");
                 exit(EXIT_FAILURE);
             }
-            // TODO: REMOVE Remove remove
-            //init job_cmds to empty commands
-            // for (int i = 0; i < MAX_COMMANDS_IN_JOB; i++) {
-            //     strcpy((job_cmds + i)->cmd_name, "");
-            //     (job_cmds + i)->cmd_arg = 0;
-            // }
+
             // Parse the worker line into job_cmds array
             parse_worker_line(curr_line_ptr + 6, job_cmds);
             // Lock the job queue mutex before pushing the job
             pthread_mutex_lock(&shared_jobs_queue.lock);
-            push_job(job_cmds);
+            push_job(job_cmds,line);
             pthread_mutex_unlock(&shared_jobs_queue.lock);
         }
         else {

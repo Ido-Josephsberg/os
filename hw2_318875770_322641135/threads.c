@@ -11,6 +11,7 @@
 #include "job_queue.h"
 #include "threads.h"
 #include "macros.h"
+#include "log_files.h"
 // ?TODO?: Create thread struct (in h file) which holds thread id, current job info, available (mutex).
 // TODO: Implement create_threads function which creates num_threads threads.
 // TODO: Implement thread_routine function which each thread will run.
@@ -78,13 +79,13 @@ static void* thread_routine(void* arg) {
             pthread_cond_wait(&ava_jobs_cond, &shared_jobs_queue.lock);
         }
         // Fetch the job from the front of the queue
-        Command *job_to_execute = pop_job();
+        Job *job_to_execute = pop_job();
         // Increment the number of working threads
         shared_jobs_queue.num_of_working_threads ++;
         // Unlock the mutex for the work queue
         pthread_mutex_unlock(&shared_jobs_queue.lock);
         // Execute the fetched job
-        execute_job(job_to_execute);
+        execute_job(job_to_execute->job_cmds);
         // Decrement the number of working threads
         pthread_mutex_lock(&shared_jobs_queue.lock);
         shared_jobs_queue.num_of_working_threads --;
@@ -92,28 +93,30 @@ static void* thread_routine(void* arg) {
             pthread_cond_signal(&shared_jobs_queue.cond_idle);
         pthread_mutex_unlock(&shared_jobs_queue.lock);
         // Free the memory allocated for the job commands
-        if (job_to_execute)
-            free(job_to_execute);
+        if (job_to_execute->job_cmds != NULL)
+            free(job_to_execute->job_cmds);
+        free(job_to_execute);
     }
     pthread_exit(NULL);
 }
 
-void create_num_threads_threads(int num_threads, pthread_t *threads_array) {
+void create_num_threads_threads(int num_threads) {
     // Create num_threads threads which will run thread_routine
     // pthread create status
     int status;
     // Iterate to create num_threads threads
     for (int i = 0; i < num_threads; i++) {
         // Create a new thread and check for errors
-        status = pthread_create(&threads_array[i], NULL, thread_routine, NULL);
+        status = pthread_create(&threads_array[i].thread_id, NULL, thread_routine, NULL);
+        threads_array[i].thread_num = i; // Thread numbers start from 0
         if (status != 0) {
             printf("hw2: pthread_create failed: %s,\nexiting\n", strerror(status));
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
 }
 
-void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_cmd_array) {
+void exit_all_threads(int num_threads, Command *exit_cmd_array) {
     // Push num_threads exit commands into the shared job queue to terminate all threads and
     // wait for their termination
     // Push exit commands into the shared job queue
@@ -124,7 +127,7 @@ void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_c
         // Lock the job queue mutex before pushing the exit command
         pthread_mutex_lock(&shared_jobs_queue.lock);
         // Push exit command into the shared job queue
-        push_job(exit_cmd_array + i);
+        push_job(exit_cmd_array + i,NULL);
         // Unlock the job queue mutex
         pthread_mutex_unlock(&shared_jobs_queue.lock);
     }
@@ -132,10 +135,10 @@ void exit_all_threads(int num_threads, pthread_t *threads_array, Command *exit_c
     int status;
     // Wait for all threads to terminate
     for (int i = 0; i < num_threads; i++) {
-        status = pthread_join(threads_array[i], NULL);
+        status = pthread_join(threads_array[i].thread_id, NULL);
         if (status != 0) {
             printf("hw2: pthread_join failed: %s,\nexiting\n", strerror(status));
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
 }

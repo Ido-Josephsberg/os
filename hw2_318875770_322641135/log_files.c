@@ -34,12 +34,12 @@ void create_threadxx_files(int num_files) {
             exit(EXIT_FAILURE);
         }
         
-        if (fprintf(fp, "%lld\n", 0LL) < 0) {
+        /*if (fprintf(fp, "%lld\n", 0LL) < 0) {
             printf("Error writing to %s\n", filename);
             fclose(fp);
             //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
-        }
+        }*/
         
         if (fclose(fp) != 0) {
             printf("Error closing %s\n", filename);
@@ -50,38 +50,34 @@ void create_threadxx_files(int num_files) {
     
 }
 
-void write_thread_log(char* filename,char* line, int thread_num, int is_start) {
-      // Validate that thread_num matches the filename threadXX.txt
-    char expected_filename[MAX_FILE_NAME];
-    sprintf(expected_filename, sizeof(len(filename)), "thread%d.txt", thread_num);
+void write_into_thread_log(char* line, WorkerThread thread, int is_start) {
+    // Construct filename from thread number
+    char filename[MAX_FILE_NAME];
+    sprintf(filename, "thread%d.txt", thread.thread_num);
     
-    if (strcmp(filename, expected_filename) != 0) {
-        printf("Error: thread_num %d does not match filename %s (expected %s)\n", thread_num, filename, expected_filename);
-        exit(EXIT_FAILURE);
-    }
     // Write to thread log file the start or end time of a job
     FILE *fp = fopen(filename, "a");
     if (fp == NULL) {
         printf("Error opening %s for appending\n", filename);
-        //close cmd_file in dispatcher main function
         exit(EXIT_FAILURE);
     }
+    
     long long current_time_ms = get_elapsed_time_ms();
+    
     if (is_start) {
-        if (fprintf(fp, " TIME %lld: START job %s\n", current_time_ms, line) < 0) {
+        if (fprintf(fp, "TIME %lld: START job %s\n", current_time_ms, line) < 0) {
             printf("Error writing start time to %s\n", filename);
             fclose(fp);
-            //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
         }
     } else {
-        if (fprintf(fp, " TIME %lld: END job %s\n", current_time_ms, line) < 0) {
+        if (fprintf(fp, "TIME %lld: END job %s\n", current_time_ms, line) < 0) {
             printf("Error writing end time to %s\n", filename);
             fclose(fp);
-            //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
         }
     }
+    
     fclose(fp);
-
+     
 }

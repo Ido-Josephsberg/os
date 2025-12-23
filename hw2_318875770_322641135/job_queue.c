@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "job_queue.h"
 #include "global_vars.h"
 
-void push_job(Command *job_cmd) {
+void push_job(Command *job_cmd, char* line) {
     // Create a new job and add it to the job queue
     // Allocate memory for the new job
     Job* new_job = (Job*)malloc(sizeof(Job));
@@ -15,6 +16,9 @@ void push_job(Command *job_cmd) {
     // Initialize the new job struct
     new_job->job_cmds = job_cmd;  // take ownership of caller's malloc
     new_job->next = NULL;
+    strncpy((char*)new_job->job_line, line, MAX_JOB_FILE_LINE - 1); //TODO: doesnt it need to be wothout -1
+    new_job->job_line[MAX_JOB_FILE_LINE - 1] = '\0'; // Ensure null-termination
+
     // If the queue is empty, set head and tail to the new job and wake up a thread
     if (shared_jobs_queue.size == 0) {
         shared_jobs_queue.head = new_job;
