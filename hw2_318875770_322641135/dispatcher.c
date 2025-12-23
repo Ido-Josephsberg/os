@@ -132,7 +132,7 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
             
             // Check dispatcher commands:
             if (log_enabled){
-                write_into_log_file(line, 0, 0, 1, 0);
+                write_into_log_file(line, 0, 0, 1, time_after_reading_line_ms);
             }
             if (strcmp(disp_cmd.cmd_name, "dispatcher_msleep") == 0) {
                 msleep(disp_cmd.cmd_arg);
