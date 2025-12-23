@@ -92,11 +92,7 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     }
 
     // Initialize shared Queue:
-<<<<<<< HEAD
-    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, log_enabled}; // Initialize an empty job queue
-=======
     shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, 0, 0, 0, 0, -1, 0}; // Initialize an empty job queue
->>>>>>> hw2_ido_new
     pthread_mutex_init(&shared_jobs_queue.lock, NULL);
     pthread_cond_init(&shared_jobs_queue.cond_idle, NULL);
 
