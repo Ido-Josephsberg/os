@@ -96,7 +96,7 @@ static void* thread_routine(void* arg) {
         if (shared_jobs_queue.log_enabled)
             write_into_log_file(job_to_execute->job_line, thread_index, 1, 0, 0);
         // Execute the fetched job
-        execute_job(job_to_execute);
+        execute_job(job_to_execute->job_cmds);
         // Get end time after job execution for logging purposes
         end_time_ms = get_elapsed_time_ms();
         turnaround_time_ms = end_time_ms - job_to_execute->time_after_reading_line_ms;
