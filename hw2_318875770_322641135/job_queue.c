@@ -4,7 +4,7 @@
 #include "job_queue.h"
 #include "global_vars.h"
 
-void push_job(Command *job_cmd, char* line) {
+void push_job(Command *job_cmd, char* line,long long time_after_reading_line_ms) {
     // Create a new job and add it to the job queue
     // Allocate memory for the new job
     Job* new_job = (Job*)malloc(sizeof(Job));
@@ -18,7 +18,7 @@ void push_job(Command *job_cmd, char* line) {
     new_job->next = NULL;
     strncpy(new_job->job_line, line, MAX_JOB_FILE_LINE - 1);
     new_job->job_line[MAX_JOB_FILE_LINE - 1] = '\0'; // Ensure null-termination
-
+    new_job->time_after_reading_line_ms = time_after_reading_line_ms; // Save time for logging purposes
     // If the queue is empty, set head and tail to the new job and wake up a thread
     if (shared_jobs_queue.size == 0) {
         shared_jobs_queue.head = new_job;
@@ -29,6 +29,7 @@ void push_job(Command *job_cmd, char* line) {
         shared_jobs_queue.tail = new_job;
     }
     shared_jobs_queue.size++;
+    shared_jobs_queue.total_jobs_added++; // Increment total jobs added count
     // Signal waiting threads that a new job is available.
     pthread_cond_signal(&ava_jobs_cond);
 }
