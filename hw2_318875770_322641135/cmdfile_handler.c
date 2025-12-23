@@ -8,12 +8,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-<<<<<<< HEAD
-=======
 #include "macros.h"
 #include "job_queue.h"
 #include "cmdfile_handler.h"
->>>>>>> dev_hw2
 
 void parse_cmd(char *cmd_str, Command *cmd) {
     if (cmd_str == NULL || cmd == NULL) {
