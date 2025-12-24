@@ -32,13 +32,13 @@ void create_countxx_files(int num_files) {
         //Opens file for writing, return error if fails
         FILE *fp = fopen(filename, "w");
         if (fp == NULL) {
-            fprintf(stderr, "Error creating %s: %s\n", filename, strerror(errno));
+            printf("Error creating %s\n", filename);
             //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
         }
         // Initialize file content to 0 (long long type)
         if (fprintf(fp, "%lld\n", 0LL) < 0) {
-            fprintf(stderr, "Error writing to %s: %s\n", filename, strerror(errno));
+            printf("Error writing to %s\n", filename);
             fclose(fp);
             //close cmd_file in dispatcher main function
             exit(EXIT_FAILURE);
@@ -62,50 +62,38 @@ static void inc_dec_counter_file(int file_number, int inc_flag) {
     // Lock the mutex corresponding to the file counter before accessing it to prevent race conditions.
     pthread_mutex_lock(file_counters_mutexes + file_number);
     // Open file counter number file_number
-    int fd = open(file_name, O_RDWR);
+    FILE *fp = fopen(file_name, "r");
     // Check for errorsS
-    if (fd == -1) {
-        print_sys_call_error("open");
-        pthread_mutex_unlock(file_counters_mutexes + file_number);
-        return;
+    if (fp == NULL) {
+        printf("Error reading %s\n", file_name);
+        //close cmd_file in dispatcher main function
+        exit(EXIT_FAILURE);
     }
     // Read the current value from the file
     char str_counter[MAX_DIGITS];
-    if (read(fd, str_counter, MAX_DIGITS) == -1) {
-        print_sys_call_error("read");
-        close(fd);
-        pthread_mutex_unlock(file_counters_mutexes + file_number);
-        return;
+    fgets(str_counter, MAX_DIGITS, fp);
+    if (str_counter[strlen(str_counter) - 1] == '\n') {
+        str_counter[strlen(str_counter) - 1] = '\0'; // Remove newline character
     }
+    fclose(fp);
     // Convert the read string to long long integer
     long long counter_value = atoll(str_counter);
     // Increment or decrement the counter value based on inc_flag
     counter_value += (inc_flag ? 1 : -1);
-    // Move the file offset to the beginning of the file. Notify in case of failure
-    if (lseek(fd, 0, SEEK_SET) == -1) {
-        print_sys_call_error("lseek");
-        close(fd);
-        pthread_mutex_unlock(file_counters_mutexes + file_number);
-        return;
+    // Open the file again for writing the updated value
+    fp = fopen(file_name, "w");
+    if (fp == NULL) {
+        printf("Error opening %s for writing\n", file_name);
+        //close cmd_file in dispatcher main function
+        exit(EXIT_FAILURE);
     }
     // Convert the updated counter value back to string
-    sprintf(str_counter, "%lld", counter_value);
-    // Write the updated counter value back to the file and notify in case of failure
-    if (write(fd, str_counter, strlen(str_counter)) == -1) {
-        print_sys_call_error("write");
-        close(fd);
-        pthread_mutex_unlock(file_counters_mutexes + file_number);
-        return;
-    }
-    // Close the file descriptor and notify in case of failure
-    if (close(fd) == -1) {
-        print_sys_call_error("close");
-        pthread_mutex_unlock(file_counters_mutexes + file_number);
-        return;
-    }
+    fprintf(fp, "%lld\n", counter_value);
+    // Close the file
+    fclose(fp);
     // Unlock the file mutex
     pthread_mutex_unlock(file_counters_mutexes + file_number);
-}
+}   
 
 void increment(int file_number) {
     // Increment file counter number file_number
