@@ -103,6 +103,8 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     // Variable to hold time after reading each line for logging purposes
     long long time_after_reading_line_ms;
     while (fgets(line, sizeof(line), cmd_file)) {
+        if (line[0] == '\n' || line[0] == '\0')
+            continue; // Skip empty lines
         // Save the time after reading the line for logging purposes
         time_after_reading_line_ms = get_elapsed_time_ms();
         // Make a copy of the line for logging purposes
@@ -110,6 +112,11 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
         if (line_copy[strlen(line_copy) - 1] == '\n')
             line_copy[strlen(line_copy) - 1] = '\0'; // Remove newline character
         line_copy[MAX_JOB_FILE_LINE - 1] = '\0'; // Ensure null-termination
+
+        // Write to dispatcher.txt log if needed
+        if (log_enabled){
+            write_into_log_file(line_copy, 0, 0, 1, time_after_reading_line_ms);
+        }
         // Check if a line is a worker or dispatcher command
         char* curr_line_ptr = line;
 
@@ -136,11 +143,6 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
         else {
             Command disp_cmd = {"", 0};
             parse_cmd(curr_line_ptr, &disp_cmd);
-            
-            // Check dispatcher commands:
-            if (log_enabled){
-                write_into_log_file(line, 0, 0, 1, time_after_reading_line_ms);
-            }
             if (strcmp(disp_cmd.cmd_name, "dispatcher_msleep") == 0) {
                 msleep(disp_cmd.cmd_arg);
             }
@@ -156,7 +158,7 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     //Convention: closing the cmd_file in the dispatcher main function called dispatcher().
 }
 
-static void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
+static void finalize_dispatcher(pthread_t *threads_array, int num_threads, int num_counters) {
     // Cleanup resources, write stats.txt, and exit all threads
 
     // Lock the job queue mutex to set exit flag
@@ -178,6 +180,13 @@ static void finalize_dispatcher(pthread_t *threads_array, int num_threads) {
     }
     // Create stats.txt file
     create_stats_file();
+    // free mutexes and condition variables
+    pthread_mutex_destroy(&shared_jobs_queue.lock);
+    pthread_cond_destroy(&shared_jobs_queue.cond_idle);
+    for (int i = 0; i < num_counters; i++) {
+        pthread_mutex_destroy(&file_counters_mutexes[i]);
+    }
+    pthread_cond_destroy(&ava_jobs_cond);
 }
 
 /*Main Dispatcher Function*/
@@ -208,7 +217,7 @@ void dispatcher(int argc, char *argv[]) {
     run_dispatcher(cmd_file,num_counters, num_threads, log_enabled);
         
     // Cleanup, write stats.txt, and exit
-    finalize_dispatcher(threads_array, num_threads); 
+    finalize_dispatcher(threads_array, num_threads, num_counters);
 
     // Close command file
     if (fclose(cmd_file) != 0) {
