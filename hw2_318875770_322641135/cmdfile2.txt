@@ -1,0 +1,10 @@
+worker repeat 3; increment 1
+worker repeat 3; increment 2
+worker repeat 3; increment 1
+worker repeat 3; increment 2
+worker repeat 3; increment 1
+worker repeat 3; increment 2
+worker repeat 3; increment 1
+worker repeat 3; increment 2
+worker repeat 3; increment 1
+worker repeat 3; increment 2

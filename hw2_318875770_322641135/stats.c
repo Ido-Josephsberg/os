@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "global_vars.h"
+#include "log_files.h"
 #include "stats.h"
 
 static void write_stats(FILE *fp) {

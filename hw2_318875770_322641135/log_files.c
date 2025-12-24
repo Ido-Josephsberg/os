@@ -62,9 +62,9 @@ void write_into_log_file(char* line, int thread_number,int is_start, int is_disp
     
     if (is_dispatcher) {
         if (fprintf(fp, "TIME %lld: read cmd line: %s\n", ms_time, line) < 0) {
-                printf("Error writing start time to %s\n", filename);
-                fclose(fp);
-                exit(EXIT_FAILURE);
+            printf("Error writing start time to %s\n", filename);
+            fclose(fp);
+            exit(EXIT_FAILURE);
         }
     }
     else {

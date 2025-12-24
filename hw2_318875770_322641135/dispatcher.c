@@ -78,7 +78,6 @@ static void dispatcher_wait() {
         */
         pthread_cond_wait(&shared_jobs_queue.cond_idle, &shared_jobs_queue.lock);
     }
-
     // Once active_jobs == 0, we have the lock and can proceed
     pthread_mutex_unlock(&shared_jobs_queue.lock);
 }
@@ -93,9 +92,11 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     }
 
     // Initialize shared Queue:
-    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, 0, 0, 0, 0, -1, 0}; // Initialize an empty job queue
+    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, 0, log_enabled, 0, 0, -1, 0}; // Initialize an empty job queue
     pthread_mutex_init(&shared_jobs_queue.lock, NULL);
     pthread_cond_init(&shared_jobs_queue.cond_idle, NULL);
+    // Variable to hold copy of the line read from cmd_file
+    char line_copy[MAX_JOB_FILE_LINE];
 
     // Dispatcher Loop
     char line[MAX_JOB_FILE_LINE];
@@ -104,6 +105,11 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
     while (fgets(line, sizeof(line), cmd_file)) {
         // Save the time after reading the line for logging purposes
         time_after_reading_line_ms = get_elapsed_time_ms();
+        // Make a copy of the line for logging purposes
+        strncpy(line_copy, line, MAX_JOB_FILE_LINE - 1);
+        if (line_copy[strlen(line_copy) - 1] == '\n')
+            line_copy[strlen(line_copy) - 1] = '\0'; // Remove newline character
+        line_copy[MAX_JOB_FILE_LINE - 1] = '\0'; // Ensure null-termination
         // Check if a line is a worker or dispatcher command
         char* curr_line_ptr = line;
 
@@ -124,7 +130,7 @@ static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, in
             parse_worker_line(curr_line_ptr + 6, job_cmds);
             // Lock the job queue mutex before pushing the job
             pthread_mutex_lock(&shared_jobs_queue.lock);
-            push_job(job_cmds, line, time_after_reading_line_ms);
+            push_job(job_cmds, line_copy, time_after_reading_line_ms);
             pthread_mutex_unlock(&shared_jobs_queue.lock);
         }
         else {

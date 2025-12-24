@@ -24,7 +24,7 @@ void create_countxx_files(int num_files) {
     }
 
     // Initialize counter files
-    for (int i = 1; i <= num_files; i++) {
+    for (int i = 0; i < num_files; i++) {
         char filename[MAX_FILE_NAME];
         // Write filename into file
         snprintf(filename, sizeof(filename), "count%02d.txt", i);
