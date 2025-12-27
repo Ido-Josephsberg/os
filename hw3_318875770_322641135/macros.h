@@ -1,1 +1,3 @@
 #define MAX_LEN_USER_MSG 256
+#define MAX_PORT_NUM 65535
+#define MIN_PORT_NUM 0

@@ -10,9 +10,6 @@
 #include "error_handling.h"
 #include "macros.h"
 
-#define MAX_PORT_NUM 65535
-#define MIN_PORT_NUM 0
-
 // TODO: Make sure you treat the NOTES in the code
 // TODO: Make sure what do to if server sends am empty message 
 
