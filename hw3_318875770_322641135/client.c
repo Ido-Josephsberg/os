@@ -1,20 +1,17 @@
 #include <stdio.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/select.h>
-#include <netdb.h>
-#include <unistd.h>
-//#include <sys/types.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <stdlib.h>
 #include "error_handling.h"
 #include "macros.h"
 
 // TODO: Make sure you treat the NOTES in the code
 // TODO: Make sure what do to if server sends am empty message 
-
-#define MAX_LEN_USER_MSG 256
 
 static int create_socket(void) {
         int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -27,26 +24,27 @@ static int create_socket(void) {
 
 static void connect_socket(int sockfd, char *server_addr, int server_port) {
     // Declare IPv4 address 
+    struct hostent *server;
     struct sockaddr_in serv_addr;
+    // Resolve hostname or IP address
+    server = gethostbyname(server_addr);
+    if (server == NULL) {
+        error("ERROR, no such host");
+    }
     // Zero out to avoid garbage values
     memset(&serv_addr, 0, sizeof(serv_addr));
     // Configure address structure
     serv_addr.sin_family   = AF_INET;        // IPv4 only
     serv_addr.sin_port = htons(server_port);
-    //Resolve server address
-
-    // !!!!!!!!!!!!!!!!!!!!!!!NOTE: Only works with IP addresses ("127.0.0.1") Does NOT work with hostnames ("localhost")
-    
-    if (inet_pton(AF_INET, server_addr, &serv_addr.sin_addr) <= 0) {
-        sys_call_error("inet_pton");
-        //NOTE:Currently exit(EXIT_FAILURE) inside error()
-    }
+    // Copy Resulved address into serv_addr
+    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
     // Connect to server (initiates TCP 3-way handshake)
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         sys_call_error("connect");
-        //NOTE:Currently exit(EXIT_FAILURE) inside error()
+        //NOTE:Currently exit(EXIT_FAILURE) inside sys_call_error()
     }
 }
+
 static void notify_name_to_server(int sockfd, char* client_name) {
     // Implementation to notify the server of the client's name
     char name_to_notify[MAX_LEN_USER_MSG + 1]; // MAX_LEN_USER_MSG 256 not including Null terminator
@@ -76,7 +74,7 @@ int main (int argc, char *argv[]) {
     // Create new socket
     int sockfd = create_socket();
     connect_socket(sockfd, server_addr, server_port);
-    // Notify client name to server - after extablishing a good connection 
+    // Notify client name to server - after establishing a good connection
     notify_name_to_server(sockfd, client_name);
     
     // Variables for the main client loop
@@ -104,10 +102,12 @@ int main (int argc, char *argv[]) {
                 //NOTE: Currently exit(EXIT_FAILURE) inside sys_call_error()
             }
             if (server_msg == 0) {
-                // Can the server close connection? Or it can send Empty message?
-                /* TODO: Implement what do to if Sever sends empty msg
-                         if not - delete this condition.
+                // Can the server close connection?
+                /* TODO: If server can not break connection remove this if (server_msg == 0) {...}
                 */
+               printf("DEBUG: Server Disconnected\n");
+               break;
+               // TODO: if it cant be empty than remove until here. 
             }
             // Print server message
             buffer[server_msg] = '\0'; // Null-terminate the received message

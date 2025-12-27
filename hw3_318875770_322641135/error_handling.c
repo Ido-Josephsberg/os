@@ -4,7 +4,7 @@
 
 void sys_call_error(const char *syscall_name) {
     // Print the error message for the given system call name along with the current errno value
-    printf("hw3: xcc%s failed, errno is %d\n", syscall_name, errno);
+    printf("hw3: %s failed, errno is %d\n", syscall_name, errno);
     exit(EXIT_FAILURE);
 }
 
