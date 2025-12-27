@@ -10,6 +10,9 @@
 #include "error_handling.h"
 #include "macros.h"
 
+#define MAX_PORT_NUM 65535
+#define MIN_PORT_NUM 0
+
 // TODO: Make sure you treat the NOTES in the code
 // TODO: Make sure what do to if server sends am empty message 
 
@@ -69,7 +72,7 @@ int main (int argc, char *argv[]) {
     char* client_name = argv[3];
 
     // Check for port validity
-    if (server_port <= 0 || server_port > 65535) {
+    if (server_port <= MIN_PORT_NUM || server_port > MAX_PORT_NUM) {
         print_error("Invalid port number");
         exit(EXIT_FAILURE);
     }
