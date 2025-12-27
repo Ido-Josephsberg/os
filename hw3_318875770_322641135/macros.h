@@ -1,0 +1,1 @@
+#define MAX_LEN_USER_MSG 256
