@@ -16,8 +16,8 @@
 static int create_socket(void) {
         int sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd < 0) {
-            sys_call_error("socket");
-            //NOTE: Currently exit(EXIT_FAILURE) inside sys_call_error()
+            print_sys_call_error("socket");
+            exit(EXIT_FAILURE);
         }
         return sockfd;
 }
@@ -29,7 +29,8 @@ static void connect_socket(int sockfd, char *server_addr, int server_port) {
     // Resolve hostname or IP address
     server = gethostbyname(server_addr);
     if (server == NULL) {
-        error("ERROR, no such host");
+        print_error("ERROR, no such host");
+        exit(EXIT_FAILURE);
     }
     // Zero out to avoid garbage values
     memset(&serv_addr, 0, sizeof(serv_addr));
@@ -40,8 +41,8 @@ static void connect_socket(int sockfd, char *server_addr, int server_port) {
     memcpy(&serv_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
     // Connect to server (initiates TCP 3-way handshake)
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        sys_call_error("connect");
-        //NOTE:Currently exit(EXIT_FAILURE) inside sys_call_error()
+        print_error("Client Connection failed please try again");
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -52,15 +53,15 @@ static void notify_name_to_server(int sockfd, char* client_name) {
     // Send name to the server
     ssize_t send_name = write(sockfd, name_to_notify, strlen(name_to_notify));
     if (send_name < 0) {
-        sys_call_error("write");
-        //NOTE:Currently exit(EXIT_FAILURE) inside sys_call_error()
+        print_sys_call_error("write");
+        exit(EXIT_FAILURE);
     }
 }
 
 int main (int argc, char *argv[]) {
     if (argc != 4) {
-        error("Invalid number of arguments: hw3client addr port name");
-        //NOTE:Currently exit(EXIT_FAILURE) inside error()
+        print_error("Invalid number of arguments: hw3client addr port name");
+        exit(EXIT_FAILURE);
     }
     // Extract arguments:
     char* server_addr = argv[1];
@@ -69,7 +70,8 @@ int main (int argc, char *argv[]) {
 
     // Check for port validity
     if (server_port <= 0 || server_port > 65535) {
-        error("Invalid port number");
+        print_error("Invalid port number");
+        exit(EXIT_FAILURE);
     }
     // Create new socket
     int sockfd = create_socket();
@@ -98,8 +100,8 @@ int main (int argc, char *argv[]) {
             // Handle server message
             ssize_t server_msg = read(sockfd, buffer, MAX_LEN_USER_MSG);
             if (server_msg < 0) {
-                sys_call_error("read");
-                //NOTE: Currently exit(EXIT_FAILURE) inside sys_call_error()
+                print_sys_call_error("read");
+                exit(EXIT_FAILURE);
             }
             if (server_msg == 0) {
                 // Can the server close connection?
@@ -124,8 +126,8 @@ int main (int argc, char *argv[]) {
             // send message to the server
             ssize_t user_msg = write(sockfd, buffer, strlen(buffer));
             if (user_msg < 0) {
-                sys_call_error("write");
-                //NOTE:Currently exit(EXIT_FAILURE) inside sys_call_error()
+                print_sys_call_error("write");
+                exit(EXIT_FAILURE);
             }
             // TODO: make sure here that the messege is being sent with '\n'
             // DEBUG PART:
