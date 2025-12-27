@@ -1,3 +1,147 @@
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "global_vars.h"
+#include "system_call_error.h"
+#include "counter_files.h"
+#include "cmdfile_handler.h"
+#include "job_queue.h"
+#include "threads.h"
+#include "macros.h"
+#include "log_files.h"
 // ?TODO?: Create thread struct (in h file) which holds thread id, current job info, available (mutex).
 // TODO: Implement create_threads function which creates num_threads threads.
 // TODO: Implement thread_routine function which each thread will run.
+
+void msleep(int milisec) {
+    // Sends the calling thread to sleep to milisec miliseconds
+    // Convert miliseconds to microseconds
+    int mikrosec = milisec * 1E3;
+    // Sleep for mikrosec mikroseconds. Notify in case of failure
+    if (usleep(mikrosec) != 0)
+        print_sys_call_error("usleep");
+}
+
+static void execute_basic_command(Command *basic_cmd) {
+    // Execute a basic command (msleep, increment, decrement)
+    // If the command is "msleep", call msleep with the provided argument
+    if (strcmp(basic_cmd->cmd_name, "msleep") == 0)
+        msleep(basic_cmd->cmd_arg);
+    // If the command is "increment", call increment with the provided argument
+    else if (strcmp(basic_cmd->cmd_name, "increment") == 0)
+        increment(basic_cmd->cmd_arg);
+
+    // Else, i.e. the command is "decrement", call decrement with the provided argument
+    else
+        decrement(basic_cmd->cmd_arg);
+
+}
+
+static void execute_job(Command job_cmd[MAX_COMMANDS_IN_JOB]) {
+    //TODO: Look for memory leaks here!!!
+    Command *curr_cmd;
+    // Iterate through the commands in the job
+    for(int i = 0; job_cmd[i].cmd_name[0] != '\0'; i++) {
+        // Current command
+        curr_cmd = job_cmd + i;
+        // If the comand is repeat, execute next command arg times
+        if (strcmp(curr_cmd->cmd_name, "repeat") == 0) {
+            int repeat_count = curr_cmd->cmd_arg;
+            // Execute the remaining commands arg times
+            for (int count = 0; count < repeat_count; count++) {
+                for (int j = i + 1; job_cmd[j].cmd_name[0] != '\0'; j++) {
+                    curr_cmd = job_cmd + j;
+                    execute_basic_command(curr_cmd);
+                }
+            }
+            // Break the loop as we have executed all commands in the job as part of repeat
+            break;
+        }
+        // Execute each basic command sequentially
+        execute_basic_command(curr_cmd);
+    }
+}
+
+static void* thread_routine(void* arg) {
+    // Pointer to job commands to execute
+    Job *job_to_execute;
+    // End time of job execution
+    long long end_time_ms, turnaround_time_ms;
+    // Main routine for each thread - fetch and execute jobs from the shared work queue
+    int thread_index = *(int*)arg;
+    while (1) {
+        // Conditinal wait until a job is available in the work queue
+        // First, lock the mutex for the work queue
+        pthread_mutex_lock(&shared_jobs_queue.lock);
+        // Wait until there is at least one job in the queue or exit flag is set
+        while (!shared_jobs_queue.size && !shared_jobs_queue.exit_flag) {
+            // Wait on the condition variable for new jobs and unlock the mutex while waiting
+            pthread_cond_wait(&ava_jobs_cond, &shared_jobs_queue.lock);
+        }
+        if (shared_jobs_queue.exit_flag && shared_jobs_queue.size == 0) {
+            // Unlock the mutex for the work queue
+            pthread_mutex_unlock(&shared_jobs_queue.lock);
+            // Exit the thread if exit flag is set and there are no more jobs
+            pthread_exit(NULL);
+        }
+        // Fetch the job from the front of the queue
+        job_to_execute = pop_job();
+        // Increment the number of working threads
+        shared_jobs_queue.num_of_working_threads ++;
+        // Unlock the mutex for the work queue
+        pthread_mutex_unlock(&shared_jobs_queue.lock);
+        // Write START to threadxx.txt if needed
+        if (shared_jobs_queue.log_enabled)
+            write_into_log_file(job_to_execute->job_line, thread_index, 1, 0, 0);
+        // Execute the fetched job
+        execute_job(job_to_execute->job_cmds);
+        // Get end time after job execution for logging purposes
+        end_time_ms = get_elapsed_time_ms();
+        turnaround_time_ms = end_time_ms - job_to_execute->time_after_reading_line_ms;
+        // Write END to threadxx.txt if needed
+        if (shared_jobs_queue.log_enabled)
+            write_into_log_file(job_to_execute->job_line, thread_index, 0, 0, 0);
+        // Decrement the number of working threads
+        pthread_mutex_lock(&shared_jobs_queue.lock);
+        shared_jobs_queue.num_of_working_threads --;
+        // Add turnaround time to total and update min/max if needed
+        shared_jobs_queue.total_turnaround_time_ms += turnaround_time_ms;
+        if (turnaround_time_ms < shared_jobs_queue.min_turnaround_time_ms || shared_jobs_queue.min_turnaround_time_ms == -1)
+            shared_jobs_queue.min_turnaround_time_ms = turnaround_time_ms;
+        if (turnaround_time_ms > shared_jobs_queue.max_turnaround_time_ms)
+            shared_jobs_queue.max_turnaround_time_ms = turnaround_time_ms;
+
+        // Signal to waiting dispatcher if the queue is now idle
+        if (shared_jobs_queue.size == 0)
+            pthread_cond_signal(&shared_jobs_queue.cond_idle);
+        pthread_mutex_unlock(&shared_jobs_queue.lock);
+        // Free the memory allocated for the job commands
+        if (job_to_execute->job_cmds != NULL)
+            free(job_to_execute->job_cmds);
+        // Free the memory allocated for the job struct
+        if (job_to_execute != NULL)
+            free(job_to_execute);
+    }
+    pthread_exit(NULL);
+}
+
+void create_num_threads_threads(int num_threads, pthread_t *threads_array) {
+    // Create num_threads threads which will run thread_routine
+    // pthread create status
+    int status;
+    int ids[MAX_WORKER_THREADS];
+    // Iterate to create num_threads threads
+    for (int i = 0; i < num_threads; i++) {
+        // Save thread index
+        ids[i] = i;
+        // Create a new thread and check for errors
+        status = pthread_create(&threads_array[i], NULL, thread_routine, (void*)(ids + i));
+        if (status != 0) {
+            printf("hw2: pthread_create failed: %s,\nexiting\n", strerror(status));
+            exit(EXIT_FAILURE);
+        }
+    }
+}

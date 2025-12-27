@@ -1,7 +1,227 @@
 // TODO: Implement dispatcher initialization function:
-    // Includes check number of parameters from command line.
-    // Includes calling create_counter_files.
-    // Includes calling create_threads.
+    // Includes check number of parameters from command line. --------> DONE
+    // Includes calling create_counter_files.  -----------------------> DONE
+    // Includes calling create_threads.  -----------------------------> DONE
 
-// TODO: Implement dispatcher_msleep.
-// TODO: Implement dispatcher_wait.
+// TODO: Implement dispatcher_msleep ---------------------------------> DONE
+// TODO: Implement dispatcher_wait.  ---------------------------------> DONE
+// TODO: Implement finalize_dispatcher.
+// TODO: Implement log enabled functionality.
+
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <pthread.h>
+#include "global_vars.h"
+#include "macros.h"
+#include "dispatcher.h"
+#include "counter_files.h"
+#include "job_queue.h"
+#include "cmdfile_handler.h"
+#include "threads.h"
+#include "log_files.h"
+#include "stats.h"
+
+// Declare Global available jobs condition variable
+pthread_cond_t ava_jobs_cond = PTHREAD_COND_INITIALIZER;
+// Declare Global shared jobs queue
+JobQueue shared_jobs_queue;
+/*Assistive Functions For Dispatcher*/
+
+static void init_dispatcher(int num_counters, int num_threads, int log_enabled, pthread_t *threads_array) {
+    // Validate num_counters and create counter files
+    if ((num_counters <= 0) || (num_counters > MAX_COUNTER_FILES)) {
+        printf("Invalid number of counters: %d\n", num_counters);
+        exit(EXIT_FAILURE);
+    }
+    // Validate num_threads and create threads
+    if ((num_threads <= 0) || (num_threads > MAX_WORKER_THREADS)) {
+        printf("Invalid number of threads: %d\n", num_threads);
+        exit(EXIT_FAILURE);
+    }
+    // Create num_threads threads
+    create_num_threads_threads(num_threads, threads_array);
+    // Create worker threads and dispatcher.txt log if log_enabled is set
+    if (log_enabled) {
+        create_threadxx_files(num_threads);
+        // Create dispatcher.txt log
+        FILE *fp = fopen("dispatcher.txt", "w");
+        if (fp == NULL) {
+            printf("Error creating %s\n", "dispatcher.txt");
+            //close cmd_file in dispatcher main function
+            exit(EXIT_FAILURE);
+        }
+        if (fclose(fp) != 0) {
+            printf("Error closing %s\n", "dispatcher.txt");
+            //close cmd_file in dispatcher main function
+            exit(EXIT_FAILURE);
+        }
+    }
+    // Create counter files
+    create_countxx_files(num_counters);
+    // Creadete dispatcher.txt log
+}
+
+static void dispatcher_wait() {   
+    //Lock the mutex to inspect the state safely
+    pthread_mutex_lock(&shared_jobs_queue.lock);
+
+    // Conditional Wait loop
+    while (shared_jobs_queue.num_of_working_threads > 0 || shared_jobs_queue.size > 0) {
+        /* pthread_cond_wait does the following:
+           - Automatically unlocks the mutex so workers can progress.
+           - Puts the dispatcher thread into a sleep state (blocking).
+           - Re-locks the mutex immediately upon being signaled and waking up.
+        */
+        pthread_cond_wait(&shared_jobs_queue.cond_idle, &shared_jobs_queue.lock);
+    }
+    // Once active_jobs == 0, we have the lock and can proceed
+    pthread_mutex_unlock(&shared_jobs_queue.lock);
+}
+
+static void run_dispatcher(FILE *cmd_file, int num_counters, int num_threads, int log_enabled) {
+    // This function contains the dispatcher loop logic
+
+    // Validate cmd_file
+    if (cmd_file == NULL) {
+        printf("Failed to open command file");
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialize shared Queue:
+    shared_jobs_queue = (JobQueue) {NULL, NULL, 0, 0, 0, log_enabled, 0, 0, -1, 0}; // Initialize an empty job queue
+    pthread_mutex_init(&shared_jobs_queue.lock, NULL);
+    pthread_cond_init(&shared_jobs_queue.cond_idle, NULL);
+    // Variable to hold copy of the line read from cmd_file
+    char line_copy[MAX_JOB_FILE_LINE];
+
+    // Dispatcher Loop
+    char line[MAX_JOB_FILE_LINE];
+    // Variable to hold time after reading each line for logging purposes
+    long long time_after_reading_line_ms;
+    while (fgets(line, sizeof(line), cmd_file)) {
+        if (line[0] == '\n' || line[0] == '\0')
+            continue; // Skip empty lines
+        // Save the time after reading the line for logging purposes
+        time_after_reading_line_ms = get_elapsed_time_ms();
+        // Make a copy of the line for logging purposes
+        strncpy(line_copy, line, MAX_JOB_FILE_LINE - 1);
+        if (line_copy[strlen(line_copy) - 1] == '\n')
+            line_copy[strlen(line_copy) - 1] = '\0'; // Remove newline character
+        line_copy[MAX_JOB_FILE_LINE - 1] = '\0'; // Ensure null-termination
+
+        // Write to dispatcher.txt log if needed
+        if (log_enabled){
+            write_into_log_file(line_copy, 0, 0, 1, time_after_reading_line_ms);
+        }
+        // Check if a line is a worker or dispatcher command
+        char* curr_line_ptr = line;
+
+        //skip leading whitespaces
+        while (*curr_line_ptr == ' ' || *curr_line_ptr == '\t') {
+            curr_line_ptr++;
+        }
+        // Check if worker command
+        if (strncmp(curr_line_ptr, "worker", 6) == 0) {
+            // Process worker command - insert into shared job queue
+            Command* job_cmds = (Command*)malloc(sizeof(Command) * (MAX_COMMANDS_IN_JOB + 1));
+            if (job_cmds == NULL) {
+                printf("hw2: memory allocation failed, exiting\n");
+                exit(EXIT_FAILURE);
+            }
+
+            // Parse the worker line into job_cmds array
+            parse_worker_line(curr_line_ptr + 6, job_cmds);
+            // Lock the job queue mutex before pushing the job
+            pthread_mutex_lock(&shared_jobs_queue.lock);
+            push_job(job_cmds, line_copy, time_after_reading_line_ms);
+            pthread_mutex_unlock(&shared_jobs_queue.lock);
+        }
+        else {
+            Command disp_cmd = {"", 0};
+            parse_cmd(curr_line_ptr, &disp_cmd);
+            if (strcmp(disp_cmd.cmd_name, "dispatcher_msleep") == 0) {
+                msleep(disp_cmd.cmd_arg);
+            }
+            else if (strcmp(disp_cmd.cmd_name, "dispatcher_wait") == 0) {
+                dispatcher_wait();
+            }
+            else {
+                printf("Unknown dispatcher command: %s\n", disp_cmd.cmd_name);
+            }
+        }          
+        
+    }    
+    //Convention: closing the cmd_file in the dispatcher main function called dispatcher().
+}
+
+static void finalize_dispatcher(pthread_t *threads_array, int num_threads, int num_counters) {
+    // Cleanup resources, write stats.txt, and exit all threads
+
+    // Lock the job queue mutex to set exit flag
+    pthread_mutex_lock(&shared_jobs_queue.lock);
+    shared_jobs_queue.exit_flag = 1;
+    // Wake up all worker threads to let them exit
+    pthread_cond_broadcast(&ava_jobs_cond);
+    // Unlock the job queue mutex
+    pthread_mutex_unlock(&shared_jobs_queue.lock);
+    // Status variable for pthread_join
+    int status;
+    // Join all worker threads
+    for (int i = 0; i < num_threads; i++) {
+        status = pthread_join(threads_array[i], NULL);
+        if (status != 0) {
+            printf("hw2: pthread_join failed: %d,\nexiting\n", status);
+            exit(EXIT_FAILURE);
+        }
+    }
+    // Create stats.txt file
+    create_stats_file();
+    // free mutexes and condition variables
+    pthread_mutex_destroy(&shared_jobs_queue.lock);
+    pthread_cond_destroy(&shared_jobs_queue.cond_idle);
+    for (int i = 0; i < num_counters; i++) {
+        pthread_mutex_destroy(&file_counters_mutexes[i]);
+    }
+    pthread_cond_destroy(&ava_jobs_cond);
+}
+
+/*Main Dispatcher Function*/
+
+void dispatcher(int argc, char *argv[]) {
+    // check for correct number of arguments
+    if (argc != 5) {
+        printf("Usage: %s cmdfile.txt num_threads num_counters log_enabled\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    //Extract user argumentsvalues
+    FILE *cmd_file = fopen(argv[1], "r");
+    if (!cmd_file) {
+        printf("Failed to open command file");
+        exit(EXIT_FAILURE);
+    }
+    int num_threads = atoi(argv[2]);
+    int num_counters = atoi(argv[3]);
+    int log_enabled = atoi(argv[4]);
+
+    // Create an array to hold thread IDs
+    pthread_t threads_array[MAX_WORKER_THREADS];
+
+    // Initialize dispatcher
+    init_dispatcher(num_counters, num_threads, log_enabled, threads_array);
+
+    // Run Dispatcher
+    run_dispatcher(cmd_file,num_counters, num_threads, log_enabled);
+        
+    // Cleanup, write stats.txt, and exit
+    finalize_dispatcher(threads_array, num_threads, num_counters);
+
+    // Close command file
+    if (fclose(cmd_file) != 0) {
+        printf("Error closing command file: %s\n", argv[1]);
+        exit(EXIT_FAILURE);
+    }
+}

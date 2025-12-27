@@ -1,2 +1,3 @@
 # tests
 - sleep more then E6.
+- A large amount of threads (to fail the create)

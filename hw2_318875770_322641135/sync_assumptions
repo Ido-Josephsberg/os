@@ -1,10 +1,21 @@
 # Ido's assumptoins
 - Global array of mutexes - one for each file, in the index as the file. Named file_counters_mutexes.
 - MAX_COMMANDS_IN_JOB macro defuned in macros.h as maximum commands in a job
-
-
-
+- Global mutex of shared queque jobs named mutex_of_shared_jobs_queque 
+- pthread condition - available jobs in shared jobs queue. Named ava_jobs_cond
 
 # Noa's assumptoins
--
+- MAX_WORKER_THREADS macro define max number of worker thread to create
+- MAX_COUNTER_FILES macro define max number of counter files to create
+- convention: If all workes fine, closing the cmd_file in the dispatcher main function called dispatcher().
+- JobQueue looks like: 
+        typedef struct JobQueue {
+            Job* head;
+            Job* tail;
+            int size;
+            int active_jobs;           // The counter for pending/running worker tasks
+            pthread_mutex_t lock;      // Mutex to protect access to the queue and counter
+            pthread_cond_t cond_idle;  // Condition variable to wake the dispatcher
+        } JobQueue;
 
+- pop_job() - returns pointer to job_cmds -> after pop it needs to be freed

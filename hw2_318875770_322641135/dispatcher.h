@@ -1,10 +1,8 @@
 #pragma once
+
 #include <stdio.h>
-#include <lib.h>
+#include <stdlib.h>
+#include "job_queue.h"
 
-extern struct Command {
-    char* cmd_name;
-    int cmd_arg;
-};
-
-
+// Dispatcher functions
+void dispatcher(int argc, char *argv[]);
