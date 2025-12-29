@@ -50,10 +50,10 @@ static void notify_name_to_server(int sockfd, char* client_name) {
     // Implementation to notify the server of the client's name
     char name_to_notify[MAX_LEN_USER_MSG + 1]; // MAX_LEN_USER_MSG 256 not including Null terminator
     snprintf(name_to_notify, sizeof(name_to_notify), "Client Name: %s", client_name);
-    // Send name to the server
-    ssize_t send_name = write(sockfd, name_to_notify, strlen(name_to_notify));
+    // Send name to the server - use MSG_NOSIGNAL to keep the proccess from terminating on disconnection
+    ssize_t send_name = send(sockfd, name_to_notify, strlen(name_to_notify), MSG_NOSIGNAL);
     if (send_name < 0) {
-        print_sys_call_error("write");
+        print_sys_call_error("send");
         exit(EXIT_FAILURE);
     }
 }
@@ -124,9 +124,9 @@ int main (int argc, char *argv[]) {
                 break;
             }
             // send message to the server
-            ssize_t user_msg = write(sockfd, buffer, strlen(buffer));
+            ssize_t user_msg = send(sockfd, buffer, strlen(buffer), MSG_NOSIGNAL);
             if (user_msg < 0) {
-                print_sys_call_error("write");
+                print_sys_call_error("send");
                 exit(EXIT_FAILURE);
             }
             // TODO: make sure here that the messege is being sent with '\n'
@@ -141,6 +141,7 @@ int main (int argc, char *argv[]) {
             // Check for exit command
             if (strncmp(buffer, "!exit", 5) == 0) {
                 printf("client exiting\n");
+                // TODO: check if notify server on disconnecting
                 break;
             }
         }
