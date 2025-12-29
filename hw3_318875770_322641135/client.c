@@ -10,7 +10,8 @@
 #include "error_handling.h"
 #include "macros.h"
 
-// TODO: Make sure you treat the NOTES in the code
+// TODO: Make sure you treat the TODOS in the code.
+// TODO: make sure to delete the debugging part.
 // TODO: Make sure what do to if server sends am empty message 
 
 static int create_socket(void) {
@@ -48,6 +49,7 @@ static void connect_socket(int sockfd, char *server_addr, int server_port) {
 
 static void notify_name_to_server(int sockfd, char* client_name) {
     // Implementation to notify the server of the client's name
+    //TODO: check name length? if need to include the NULL terminator?
     char name_to_notify[MAX_LEN_USER_MSG + 1]; // MAX_LEN_USER_MSG 256 not including Null terminator
     snprintf(name_to_notify, sizeof(name_to_notify), "Client Name: %s", client_name);
     // Send name to the server - use MSG_NOSIGNAL to keep the proccess from terminating on disconnection
@@ -93,7 +95,7 @@ int main (int argc, char *argv[]) {
         // Wait for activity using select()
         int activity = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
         if (activity < 0) {
-            sys_call_error("select");
+            print_sys_call_error("select");
         }
         // Handle Server Message
         if (FD_ISSET(sockfd, &read_fds)) {
@@ -104,23 +106,21 @@ int main (int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
             }
             if (server_msg == 0) {
-                // Can the server close connection?
-                /* TODO: If server can not break connection remove this if (server_msg == 0) {...}
-                */
-               printf("DEBUG: Server Disconnected\n");
-               break;
-               // TODO: if it cant be empty than remove until here. 
+                // Server has closed the connection unexpectedly (its not supposed to happen according to the requirements)
+               print_error("Server disconnected unexpectedly");
+               exit(EXIT_FAILURE);
             }
             // Print server message
             buffer[server_msg] = '\0'; // Null-terminate the received message
             printf("%s", buffer);
-            fflush(stdout); // NOTE: not sure if needed. // Force immediate display
+            fflush(stdout); // TODO: not sure if needed. // Force immediate display
         }
         // Handle User Input
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
             if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
                 // EOF reached (Ctrl+D pressed)
                 // Close connection gracefully
+                print_error("Didn't get the user message, exiting");
                 break;
             }
             // send message to the server
@@ -129,6 +129,7 @@ int main (int argc, char *argv[]) {
                 print_sys_call_error("send");
                 exit(EXIT_FAILURE);
             }
+
             // TODO: make sure here that the messege is being sent with '\n'
             // DEBUG PART:
             // Check if message ends with newline (fgets includes \n)
