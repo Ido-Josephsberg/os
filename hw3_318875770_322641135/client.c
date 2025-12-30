@@ -50,10 +50,10 @@ static void connect_socket(int sockfd, char *server_addr, int server_port) {
 static void notify_name_to_server(int sockfd, char* client_name) {
     // Implementation to notify the server of the client's name
     //TODO: check name length? if need to include the NULL terminator?
-    char name_to_notify[MAX_LEN_USER_MSG + 1]; // MAX_LEN_USER_MSG 256 not including Null terminator
-    snprintf(name_to_notify, sizeof(name_to_notify), "Client Name: %s", client_name);
+    //char name_to_notify[MAX_LEN_USER_MSG + 1]; // MAX_LEN_USER_MSG 256 not including Null terminator
+    //snprintf(name_to_notify, sizeof(name_to_notify), "Client Name: %s", client_name);
     // Send name to the server - use MSG_NOSIGNAL to keep the proccess from terminating on disconnection
-    ssize_t send_name = send(sockfd, name_to_notify, strlen(name_to_notify), MSG_NOSIGNAL);
+    ssize_t send_name = send(sockfd, client_name, strlen(client_name), MSG_NOSIGNAL);
     if (send_name < 0) {
         print_sys_call_error("send");
         exit(EXIT_FAILURE);
