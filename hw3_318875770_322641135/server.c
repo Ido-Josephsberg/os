@@ -6,9 +6,11 @@
 #include <string.h>
 #include <unistd.h>
 #include "server.h"
+#include "macros.h"
+#include "error_handling.h"
 #define MAX_EVENTS 16
 
-int init_socket(int port) {
+static int init_socket(int port) {
     // Initialize server socket
     int sock_fd, new_sock_fd; // File descriptors for the sockets
     
@@ -23,7 +25,7 @@ int init_socket(int port) {
     return sock_fd;
 }
 
-void init_server_socket(int port, struct sockaddr_in *server_addr, struct sockaddr_in *client_addr) {
+static void init_server_socket(int port, struct sockaddr_in *server_addr, struct sockaddr_in *client_addr) {
     // Set socket options
     // Clear the server_addr structure
     bzero(server_addr, sizeof(*server_addr));
@@ -32,7 +34,7 @@ void init_server_socket(int port, struct sockaddr_in *server_addr, struct sockad
     server_addr->sin_port = htons(port); // Convert port number to network byte order
 }
 
-void bind_and_listen(int sock_fd, struct sockaddr_in *server_addr) {
+static void bind_and_listen(int sock_fd, struct sockaddr_in *server_addr) {
     // Bind the socket to the specified port
     if (bind(sock_fd, (struct sockaddr *)server_addr, sizeof(*server_addr)) < 0) {
         // Notify about the error and exit
@@ -44,7 +46,7 @@ void bind_and_listen(int sock_fd, struct sockaddr_in *server_addr) {
     listen(sock_fd, MAX_EVENTS);
 }
 
-int create_epoll_instance() {
+static int create_epoll_instance() {
     // Create epoll instance
     int epoll_fd = epoll_create1(0);
     if (epoll_fd == -1) {
@@ -55,7 +57,7 @@ int create_epoll_instance() {
     return epoll_fd;
 }
 
-int wait_for_events(int epoll_fd, struct epoll_event *events) {
+static int wait_for_events(int epoll_fd, struct epoll_event *events) {
     // Wait for events on the epoll instance and return the number of events.
     // Wait for events and save the number of file descriptors ready for reading.
     int num_events = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
@@ -69,7 +71,7 @@ int wait_for_events(int epoll_fd, struct epoll_event *events) {
     return num_events;
 }
 
-int add_client_connection(int socket_fd, struct sockaddr_in *client_addr, client_info *clients, struct epoll_event *clients_event, int epoll_fd, int *curr_client_count) {
+static int add_client_connection(int socket_fd, struct sockaddr_in *client_addr, client_info *clients, struct epoll_event *clients_event, int epoll_fd, int *curr_client_count) {
     // Accept new client connection and add it to clients array and epoll instance
     // Structure to hold client address
     struct sockaddr *client_addr;
@@ -91,7 +93,7 @@ int add_client_connection(int socket_fd, struct sockaddr_in *client_addr, client
     return 0;
 }
 
-client_info* get_client_by_fd(int fd, client_info *clients, int curr_client_count) {
+static client_info* get_client_by_fd(int fd, client_info *clients, int curr_client_count) {
     // Return pointer to client_info struct for the given file descriptor
     // Assume fd is valid and exists in clients array
     for (int i = 0; i < curr_client_count; i++)
@@ -100,9 +102,10 @@ client_info* get_client_by_fd(int fd, client_info *clients, int curr_client_coun
             return (clients + i);
         }
     }
+    return NULL; // Should not reach here if fd is valid
 }
 
-void announce_new_client(client_info *new_client) {
+static void announce_new_client(client_info *new_client) {
     // Display on server console that a new client has connected
     // Read the client's name from the client into client_info struct. Notify and return if error occurs.
     if (recv(new_client->fd, new_client->name, MAX_LEN_USER_MSG, 0) == -1) {
@@ -118,7 +121,7 @@ void announce_new_client(client_info *new_client) {
     printf("client %s connected from %s\n", new_client->name, client_ip);
 }
 
-void send_message_to_client(client_info *sender, int client_fd, char *message) {
+static void send_message_to_client(client_info *sender, int client_fd, char *message) {
     // Send message to the client with the given file descriptor. Add sender's name as prefix.
     char msg_to_send[MAX_LEN_USER_MSG + 12];
     snprintf(msg_to_send, sizeof(msg_to_send) + 1, "%s: %s", sender->name, message); // Prefix for the message
@@ -128,7 +131,7 @@ void send_message_to_client(client_info *sender, int client_fd, char *message) {
     }
 }
 
-int search_client_by_name(char *name, client_info *clients, int curr_client_count) {
+static int search_client_by_name(char *name, client_info *clients, int curr_client_count) {
     // Search for a client by name in the clients array
     for (int i = 0; i < curr_client_count; i++) {
         if (clients[i].has_name && strcmp(clients[i].name, name) == 0) {
@@ -138,7 +141,7 @@ int search_client_by_name(char *name, client_info *clients, int curr_client_coun
     return -1; // Return -1 if not found
 }
 
-void whisper_message(client_info *sender, char *message, client_info *clients, int curr_client_count) {
+static void whisper_message(client_info *sender, char *message, client_info *clients, int curr_client_count) {
     // Handle whisper message from sender.
     // Extract recipient name and actual message
     char recipient_name[MAX_LEN_USER_MSG];
@@ -154,7 +157,7 @@ void whisper_message(client_info *sender, char *message, client_info *clients, i
     send_message_to_client(sender, recipient_fd, message);
 }
 
-void normal_message(client_info *sender, char *message, client_info *clients, int curr_client_count) {
+static void normal_message(client_info *sender, char *message, client_info *clients, int curr_client_count) {
     // Send message to all connected clients
     for (int i = 0; i < curr_client_count; i++) {
         // Send message to the client
@@ -162,7 +165,7 @@ void normal_message(client_info *sender, char *message, client_info *clients, in
     }
 }
 
-void exit_client(client_info *sender, client_info *clients, int *curr_client_count, int epoll_fd) {
+static void exit_client(client_info *sender, client_info *clients, int *curr_client_count, int epoll_fd) {
     // Handle client exit
     // Remove sender file descriptor from epoll instance and notify about error if occurs
     if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, sender->fd, NULL) == -1)
@@ -180,14 +183,14 @@ void exit_client(client_info *sender, client_info *clients, int *curr_client_cou
     
 }
 
-void exit_message(client_info *sender, client_info *clients, int *curr_client_count, int epoll_fd) {
+static void exit_message(client_info *sender, client_info *clients, int *curr_client_count, int epoll_fd) {
     // Handle client exit
     // Normall message to all clients
     normal_message(sender, "!exit", clients, *curr_client_count);
     exit_client(sender, clients, curr_client_count, epoll_fd);
 }
 
-void send_client_message(client_info *curr_client, client_info *clients, int *curr_client_count, int epoll_fd) {
+static void send_client_message(client_info *curr_client, client_info *clients, int *curr_client_count, int epoll_fd) {
     // Receive message from client and send client's message.
     // Receive message from client. Notify and return if error occurs.
     char msg_buffer[MAX_LEN_USER_MSG];
@@ -220,7 +223,7 @@ void send_client_message(client_info *curr_client, client_info *clients, int *cu
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         // Print usage information and exit
-        print_error("Usage: %s <port>\n", argv[0]);
+        print_error("Usage: hw3server <port>\n");
         exit(EXIT_FAILURE);
     }
     int curr_client_count = 0; // Current number of connected clients
@@ -252,6 +255,10 @@ int main(int argc, char *argv[]) {
                 // Handle client data
                 int client_fd = events[i].data.fd;
                 client_info *curr_client = get_client_by_fd(client_fd, clients, curr_client_count);
+                if(curr_client == NULL) { 
+                    // Invalid client fd, skip to next event
+                    continue;
+                }
                 if (curr_client->has_name == 0) {
                     // Announce new client
                     announce_new_client(curr_client);
