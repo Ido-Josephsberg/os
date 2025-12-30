@@ -23,6 +23,12 @@ static int init_socket(int port) {
         print_sys_call_error("socket");
         exit(EXIT_FAILURE);
     }
+    int opt = 1;
+    // Set socket options to allow reuse of address and port
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        print_sys_call_error("setsockopt");
+        exit(EXIT_FAILURE);
+    }
     return sock_fd;
 }
 
@@ -31,7 +37,7 @@ static void init_server_socket(int port, struct sockaddr_in *server_addr, struct
     // Clear the server_addr structure
     bzero(server_addr, sizeof(*server_addr));
     server_addr->sin_family = AF_INET; // IPv4
-    server_addr->sin_addr.s_addr = INADDR_ANY; // Accept connections from any address
+    server_addr->sin_addr.s_addr = htonl(INADDR_ANY); // Accept connections from any address
     server_addr->sin_port = htons(port); // Convert port number to network byte order
 }
 
@@ -74,8 +80,10 @@ static int wait_for_events(int epoll_fd, struct epoll_event *events) {
 
 static int add_client_connection(int socket_fd, struct sockaddr_in *client_addr, client_info *clients, struct epoll_event *clients_event, int epoll_fd, int *curr_client_count) {
     // Accept new client connection and add it to clients array and epoll instance
+    // Client address length
+    socklen_t client_len = sizeof(*client_addr);
     // Accept new client connection
-    int new_sock_fd = accept(socket_fd, (struct sockaddr *)client_addr, (socklen_t *)sizeof(*client_addr));
+    int new_sock_fd = accept(socket_fd, (struct sockaddr *)client_addr, &client_len);
     if (new_sock_fd == -1) {
         // Notify about the error and continue to the next iteration
         print_sys_call_error("accept");
@@ -84,6 +92,7 @@ static int add_client_connection(int socket_fd, struct sockaddr_in *client_addr,
     // Add new client to clients array
     clients[*curr_client_count].fd = new_sock_fd;
     clients[*curr_client_count].addr = client_addr->sin_addr;
+    clients[*curr_client_count].has_name = 0; // Initially, client has no name
     (*curr_client_count)++;
     // TODO: CONSIDER change fd to non-blocking mode
     // Add new socket to epoll instance
@@ -123,7 +132,7 @@ static void announce_new_client(client_info *new_client) {
 
 static void send_message_to_client(client_info *sender, int client_fd, char *message) {
     // Send message to the client with the given file descriptor. Add sender's name as prefix.
-    char msg_to_send[MAX_LEN_USER_MSG + 12];
+    char msg_to_send[MAX_LEN_USER_MSG + 1];
     snprintf(msg_to_send, sizeof(msg_to_send) + 1, "%s: %s", sender->name, message); // Prefix for the message
     // Send message to the client with the given file descriptor.
     if (send(client_fd, msg_to_send, strlen(msg_to_send) + 1, MSG_NOSIGNAL) == -1) {
@@ -193,13 +202,14 @@ static void exit_message(client_info *sender, client_info *clients, int *curr_cl
 static void send_client_message(client_info *curr_client, client_info *clients, int *curr_client_count, int epoll_fd) {
     // Receive message from client and send client's message.
     // Receive message from client. Notify and return if error occurs.
-    char msg_buffer[MAX_LEN_USER_MSG];
+    char msg_buffer[MAX_LEN_USER_MSG + 1];
     // Receive message from client
     int n = recv(curr_client->fd, msg_buffer, MAX_LEN_USER_MSG, 0);
     if (n == -1) {
         print_sys_call_error("recv");
         return;
     }
+    msg_buffer[n] = '\0'; // Null-terminate the received message
     if (n == 0)
         // Client disconnected
         exit_client(curr_client, clients, curr_client_count, epoll_fd);
@@ -248,9 +258,7 @@ int main(int argc, char *argv[]) {
     // Handle incoming connections and events
     while (1)
     {
-        printf("DEBUG: Waiting for events...\n");
         int num_events = wait_for_events(epoll_fd, events);
-        printf("DEBUG: got events...\n");
         for (int i = 0; i < num_events; i++) {
             // New client connection
             if (events[i].data.fd == socket_fd) {

@@ -113,7 +113,7 @@ int main (int argc, char *argv[]) {
             // Print server message
             buffer[server_msg] = '\0'; // Null-terminate the received message
             printf("%s", buffer);
-            fflush(stdout); // TODO: not sure if needed. // Force immediate display
+            
         }
         // Handle User Input
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
@@ -129,16 +129,6 @@ int main (int argc, char *argv[]) {
                 print_sys_call_error("send");
                 exit(EXIT_FAILURE);
             }
-
-            // TODO: make sure here that the messege is being sent with '\n'
-            // DEBUG PART:
-            // Check if message ends with newline (fgets includes \n)
-            size_t len = strlen(buffer);
-            if (len > 0 && buffer[len - 1] == '\n') {
-                printf("DEBUG: user msg is sent to server with newline\n");
-            }
-            // END DEBUG PART
-
             // Check for exit command
             if (strncmp(buffer, "!exit", 5) == 0) {
                 printf("client exiting\n");
