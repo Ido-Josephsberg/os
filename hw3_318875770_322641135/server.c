@@ -117,10 +117,13 @@ static client_info* get_client_by_fd(int fd, client_info *clients, int curr_clie
 static void announce_new_client(client_info *new_client) {
     // Display on server console that a new client has connected
     // Read the client's name from the client into client_info struct. Notify and return if error occurs.
-    if (recv(new_client->fd, new_client->name, MAX_LEN_USER_MSG, 0) == -1) {
+    int n = recv(new_client->fd, new_client->name, MAX_LEN_USER_MSG, 0);
+    if (n == -1) {
         print_sys_call_error("recv");
         return;
     }
+    // Null-terminate the received name
+    new_client->name[n] = '\0';
     // Mark that the client has a name
     new_client->has_name = 1;
     // Get client IP address as string
