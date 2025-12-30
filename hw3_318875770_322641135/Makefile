@@ -3,7 +3,7 @@ all: hw3server hw3client
 hw3server: server error_handling
 	gcc -g -Wall server error_handling -o hw3server
 
-server: server.c error_handling.h macros.h
+server: server.c server.h error_handling.h macros.h
 	gcc -g -Wall -c server.c -o server
 
 hw3client: client error_handling

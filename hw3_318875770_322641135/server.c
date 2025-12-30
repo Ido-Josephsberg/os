@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
 #include "server.h"
@@ -12,7 +13,7 @@
 
 static int init_socket(int port) {
     // Initialize server socket
-    int sock_fd, new_sock_fd; // File descriptors for the sockets
+    int sock_fd; // File descriptor for the socket
     
 
     // Creating socket file descriptor
@@ -73,9 +74,8 @@ static int wait_for_events(int epoll_fd, struct epoll_event *events) {
 
 static int add_client_connection(int socket_fd, struct sockaddr_in *client_addr, client_info *clients, struct epoll_event *clients_event, int epoll_fd, int *curr_client_count) {
     // Accept new client connection and add it to clients array and epoll instance
-    // Structure to hold client address
-    struct sockaddr *client_addr;
-    int new_sock_fd = accept(socket_fd, client_addr, sizeof(*client_addr));
+    // Accept new client connection
+    int new_sock_fd = accept(socket_fd, (struct sockaddr *)client_addr, (socklen_t *)sizeof(*client_addr));
     if (new_sock_fd == -1) {
         // Notify about the error and continue to the next iteration
         print_sys_call_error("accept");
@@ -83,7 +83,7 @@ static int add_client_connection(int socket_fd, struct sockaddr_in *client_addr,
     }
     // Add new client to clients array
     clients[*curr_client_count].fd = new_sock_fd;
-    clients[*curr_client_count].addr = ((struct sockaddr_in*)client_addr)->sin_addr;
+    clients[*curr_client_count].addr = client_addr->sin_addr;
     (*curr_client_count)++;
     // TODO: CONSIDER change fd to non-blocking mode
     // Add new socket to epoll instance
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
     }
     int curr_client_count = 0; // Current number of connected clients
     struct sockaddr_in server_addr, client_addr; // Server and client address structure
-    struct epoll_event clients_event, events[MAX_EVENTS]; // Epoll events structures of clients inputs/ connections requests.
+    struct epoll_event main_socket_event, events[MAX_EVENTS]; // Epoll events structures of clients inputs/ connections requests.
     client_info clients[MAX_EVENTS]; // Array to store client information
     // Convert port argument to integer
     int port = atoi(argv[1]);
@@ -240,15 +240,22 @@ int main(int argc, char *argv[]) {
     bind_and_listen(socket_fd, &server_addr);
     // Create epoll instance
     int epoll_fd = create_epoll_instance();
+    // Configure main socket event
+    main_socket_event.events = EPOLLIN; // Monitor for input events
+    main_socket_event.data.fd = socket_fd;
+    // Add server socket to epoll instance to monitor incoming connections
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket_fd, &main_socket_event);
     // Handle incoming connections and events
     while (1)
     {
+        printf("DEBUG: Waiting for events...\n");
         int num_events = wait_for_events(epoll_fd, events);
+        printf("DEBUG: got events...\n");
         for (int i = 0; i < num_events; i++) {
             // New client connection
             if (events[i].data.fd == socket_fd) {
                 // Accept new client connection
-                if (add_client_connection(socket_fd, clients, &clients_event, epoll_fd, &curr_client_count) != 0)
+                if (add_client_connection(socket_fd, &client_addr, clients, (events + i), epoll_fd, &curr_client_count) != 0)
                     continue; // Error occurred while adding client connection, skip to next event
             }
             else {
