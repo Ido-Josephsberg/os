@@ -123,7 +123,7 @@ static void announce_new_client(client_info *new_client) {
         return;
     }
     // Null-terminate the received name
-    new_client->name[n] = '\0';
+    (new_client->name)[n] = '\0';
     // Mark that the client has a name
     new_client->has_name = 1;
     // Get client IP address as string
@@ -135,8 +135,8 @@ static void announce_new_client(client_info *new_client) {
 
 static void send_message_to_client(client_info *sender, int client_fd, char *message) {
     // Send message to the client with the given file descriptor. Add sender's name as prefix.
-    char msg_to_send[MAX_LEN_USER_MSG + 1];
-    snprintf(msg_to_send, sizeof(msg_to_send) + 1, "%s: %s", sender->name, message); // Prefix for the message
+    char msg_to_send[MAX_LEN_USER_MSG + 3];
+    sprintf(msg_to_send, "%s: %s", sender->name, message); // Prefix for the message
     // Send message to the client with the given file descriptor.
     if (send(client_fd, msg_to_send, strlen(msg_to_send) + 1, MSG_NOSIGNAL) == -1) {
         print_sys_call_error("send");
