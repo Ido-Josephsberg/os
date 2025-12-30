@@ -41,8 +41,8 @@ static void connect_socket(int sockfd, char *server_addr, int server_port) {
     // Copy Resulved address into serv_addr
     memcpy(&serv_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
     // Connect to server (initiates TCP 3-way handshake)
-    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        print_error("Client Connection failed please try again");
+    if (connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(serv_addr)) < 0) {
+        print_sys_call_error("connect");
         exit(EXIT_FAILURE);
     }
 }
