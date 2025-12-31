@@ -121,8 +121,6 @@ static void announce_new_client(client_info *new_client) {
         print_sys_call_error("recv");
         return;
     }
-    // Null-terminate the received name
-    (new_client->name)[n] = '\0';
     // Mark that the client has a name
     new_client->has_name = 1;
     // Get client IP address as string
@@ -134,8 +132,10 @@ static void announce_new_client(client_info *new_client) {
 
 static void send_message_to_client(client_info *sender, int client_fd, char *message) {
     // Send message to the client with the given file descriptor. Add sender's name as prefix.
-    char msg_to_send[MAX_LEN_USER_MSG + 3];
-    sprintf(msg_to_send, "%s: %s", sender->name, message); // Prefix for the message
+    // Buffer for the message to send: each of sender name and message is 256 (include null terminator)
+    //so 2*256 - 1 + 2 for ": "
+    char msg_to_send[2 * MAX_LEN_USER_MSG + 1];
+    snprintf(msg_to_send, sizeof(msg_to_send), "%s: %s", sender->name, message); // Prefix for the message
     // Send message to the client with the given file descriptor.
     if (send(client_fd, msg_to_send, strlen(msg_to_send) + 1, MSG_NOSIGNAL) == -1) {
         print_sys_call_error("send");
@@ -197,21 +197,20 @@ static void exit_client(client_info *sender, client_info *clients, int *curr_cli
 static void exit_message(client_info *sender, client_info *clients, int *curr_client_count, int epoll_fd) {
     // Handle client exit
     // Normall message to all clients
-    normal_message(sender, "!exit", clients, *curr_client_count);
+    normal_message(sender, "!exit\n", clients, *curr_client_count);
     exit_client(sender, clients, curr_client_count, epoll_fd);
 }
 
 static void send_client_message(client_info *curr_client, client_info *clients, int *curr_client_count, int epoll_fd) {
     // Receive message from client and send client's message.
     // Receive message from client. Notify and return if error occurs.
-    char msg_buffer[MAX_LEN_USER_MSG + 1];
+    char msg_buffer[MAX_LEN_USER_MSG];
     // Receive message from client
     int n = recv(curr_client->fd, msg_buffer, MAX_LEN_USER_MSG, 0);
     if (n == -1) {
         print_sys_call_error("recv");
         return;
     }
-    msg_buffer[n] = '\0'; // Null-terminate the received message
     if (n == 0)
         // Client disconnected
         exit_client(curr_client, clients, curr_client_count, epoll_fd);
@@ -221,7 +220,7 @@ static void send_client_message(client_info *curr_client, client_info *clients, 
         // Send whisper message
         whisper_message(curr_client, msg_buffer, clients, *curr_client_count);
     }
-    else if (strcmp(msg_buffer, "!exit") == 0) {
+    else if (strcmp(msg_buffer, "!exit\n") == 0) {
         // Handle exit message
         exit_message(curr_client, clients, curr_client_count, epoll_fd);
     }

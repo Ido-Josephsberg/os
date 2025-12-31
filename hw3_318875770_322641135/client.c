@@ -46,7 +46,7 @@ static void connect_socket(int sockfd, char *server_addr, int server_port) {
 
 static void notify_name_to_server(int sockfd, char* client_name) {
     // Implementation to notify the server of the client's name
-    ssize_t send_name = send(sockfd, client_name, strlen(client_name), MSG_NOSIGNAL);
+    ssize_t send_name = send(sockfd, client_name, strlen(client_name) + 1, MSG_NOSIGNAL);
     if (send_name < 0) {
         print_sys_call_error("send");
         exit(EXIT_FAILURE);
@@ -77,7 +77,7 @@ int main (int argc, char *argv[]) {
     // Variables for the main client loop
     fd_set read_fds;
     int max_fd = (sockfd > STDIN_FILENO) ? sockfd : STDIN_FILENO;
-    char buffer[MAX_LEN_USER_MSG + 1];
+    char buffer[2 * MAX_LEN_USER_MSG + 1]; // Buffer for messages (to accommodate name + message + ": ")
     int sent_exit = 0; // Flag to indicate if exit command was sent
     // Main client loop (select loop - allows to handle input and server messages in parallel)
     while (1)
@@ -94,7 +94,7 @@ int main (int argc, char *argv[]) {
         // Handle Server Message
         if (FD_ISSET(sockfd, &read_fds)) {
             // Handle server message
-            ssize_t server_msg = read(sockfd, buffer, MAX_LEN_USER_MSG);
+            ssize_t server_msg = read(sockfd, buffer, sizeof(buffer));
             if (server_msg < 0) {
                 print_sys_call_error("read");
                 exit(EXIT_FAILURE);
@@ -105,7 +105,6 @@ int main (int argc, char *argv[]) {
                exit(EXIT_FAILURE);
             }
             // Print server message
-            buffer[server_msg] = '\0'; // Null-terminate the received message
             printf("%s", buffer);
 
         }
@@ -123,7 +122,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             // send message to the server
-            ssize_t user_msg = send(sockfd, buffer, strlen(buffer), MSG_NOSIGNAL);
+            ssize_t user_msg = send(sockfd, buffer, strlen(buffer) + 1, MSG_NOSIGNAL);
             if (user_msg < 0) {
                 print_sys_call_error("send");
                 exit(EXIT_FAILURE);

@@ -5,6 +5,6 @@
 typedef struct{
     int fd;
     struct in_addr addr;
-    char name[MAX_LEN_USER_MSG + 1];
+    char name[MAX_LEN_USER_MSG];
     int has_name;
 } client_info;
