@@ -85,6 +85,7 @@ int main (int argc, char *argv[]) {
     fd_set read_fds;
     int max_fd = (sockfd > STDIN_FILENO) ? sockfd : STDIN_FILENO;
     char buffer[MAX_LEN_USER_MSG + 1]; // TODO: check this
+    int sent_exit = 0; // Flag to indicate if exit command was sent
     // Main client loop (select loop - allows to handle input and server messages in parallel)
     while (1)
     {
@@ -115,6 +116,11 @@ int main (int argc, char *argv[]) {
             printf("%s", buffer);
             
         }
+        if (sent_exit) {
+            // Exit command was sent, break the loop
+            printf("client exiting\n");
+            break;
+        }
         // Handle User Input
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
             if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
@@ -131,9 +137,8 @@ int main (int argc, char *argv[]) {
             }
             // Check for exit command
             if (strncmp(buffer, "!exit", 5) == 0) {
-                printf("client exiting\n");
-                // TODO: check if notify server on disconnecting
-                break;
+                sent_exit = 1;
+                //shutdown(sockfd, SHUT_WR);
             }
         }
     }

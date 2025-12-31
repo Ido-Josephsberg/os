@@ -199,6 +199,7 @@ static void exit_message(client_info *sender, client_info *clients, int *curr_cl
     // Handle client exit
     // Normall message to all clients
     normal_message(sender, "!exit", clients, *curr_client_count);
+    //shutdown(sender->fd, SHUT_RD);
     exit_client(sender, clients, curr_client_count, epoll_fd);
 }
 
