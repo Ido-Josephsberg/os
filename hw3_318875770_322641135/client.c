@@ -128,7 +128,7 @@ int main (int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
             }
             // Check for exit command
-            if (strncmp(buffer, "!exit", 5) == 0) {
+            if (strcmp(buffer, "!exit\n") == 0) {
                 sent_exit = 1;
             }
         }
