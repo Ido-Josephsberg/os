@@ -10,9 +10,6 @@
 #include "error_handling.h"
 #include "macros.h"
 
-// TODO: Make sure you treat the TODOS in the code.
-// TODO: make sure to delete the debugging part.
-// TODO: Make sure what do to if server sends am empty message 
 
 static int create_socket(void) {
         int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -24,7 +21,7 @@ static int create_socket(void) {
 }
 
 static void connect_socket(int sockfd, char *server_addr, int server_port) {
-    // Declare IPv4 address 
+    // Declare IPv4 address
     struct hostent *server;
     struct sockaddr_in serv_addr;
     // Resolve hostname or IP address
@@ -49,10 +46,6 @@ static void connect_socket(int sockfd, char *server_addr, int server_port) {
 
 static void notify_name_to_server(int sockfd, char* client_name) {
     // Implementation to notify the server of the client's name
-    //TODO: check name length? if need to include the NULL terminator?
-    //char name_to_notify[MAX_LEN_USER_MSG + 1]; // MAX_LEN_USER_MSG 256 not including Null terminator
-    //snprintf(name_to_notify, sizeof(name_to_notify), "Client Name: %s", client_name);
-    // Send name to the server - use MSG_NOSIGNAL to keep the proccess from terminating on disconnection
     ssize_t send_name = send(sockfd, client_name, strlen(client_name), MSG_NOSIGNAL);
     if (send_name < 0) {
         print_sys_call_error("send");
@@ -80,11 +73,11 @@ int main (int argc, char *argv[]) {
     connect_socket(sockfd, server_addr, server_port);
     // Notify client name to server - after establishing a good connection
     notify_name_to_server(sockfd, client_name);
-    
+
     // Variables for the main client loop
     fd_set read_fds;
     int max_fd = (sockfd > STDIN_FILENO) ? sockfd : STDIN_FILENO;
-    char buffer[MAX_LEN_USER_MSG + 1]; // TODO: check this
+    char buffer[MAX_LEN_USER_MSG + 1];
     int sent_exit = 0; // Flag to indicate if exit command was sent
     // Main client loop (select loop - allows to handle input and server messages in parallel)
     while (1)
@@ -114,7 +107,7 @@ int main (int argc, char *argv[]) {
             // Print server message
             buffer[server_msg] = '\0'; // Null-terminate the received message
             printf("%s", buffer);
-            
+
         }
         if (sent_exit) {
             // Exit command was sent, break the loop
@@ -138,7 +131,6 @@ int main (int argc, char *argv[]) {
             // Check for exit command
             if (strncmp(buffer, "!exit", 5) == 0) {
                 sent_exit = 1;
-                //shutdown(sockfd, SHUT_WR);
             }
         }
     }

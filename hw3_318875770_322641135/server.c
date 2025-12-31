@@ -14,7 +14,7 @@
 static int init_socket(int port) {
     // Initialize server socket
     int sock_fd; // File descriptor for the socket
-    
+
 
     // Creating socket file descriptor
     sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -94,7 +94,6 @@ static int add_client_connection(int socket_fd, struct sockaddr_in *client_addr,
     clients[*curr_client_count].addr = client_addr->sin_addr;
     clients[*curr_client_count].has_name = 0; // Initially, client has no name
     (*curr_client_count)++;
-    // TODO: CONSIDER change fd to non-blocking mode
     // Add new socket to epoll instance
     clients_event->events = EPOLLIN; // Monitor for input events
     clients_event->data.fd = new_sock_fd;
@@ -192,14 +191,13 @@ static void exit_client(client_info *sender, client_info *clients, int *curr_cli
         *sender = clients[*curr_client_count - 1];
     // Decrease current client count
     (*curr_client_count)--;
-    
+
 }
 
 static void exit_message(client_info *sender, client_info *clients, int *curr_client_count, int epoll_fd) {
     // Handle client exit
     // Normall message to all clients
     normal_message(sender, "!exit", clients, *curr_client_count);
-    //shutdown(sender->fd, SHUT_RD);
     exit_client(sender, clients, curr_client_count, epoll_fd);
 }
 
@@ -274,7 +272,7 @@ int main(int argc, char *argv[]) {
                 // Handle client data
                 int client_fd = events[i].data.fd;
                 client_info *curr_client = get_client_by_fd(client_fd, clients, curr_client_count);
-                if(curr_client == NULL) { 
+                if(curr_client == NULL) {
                     // Invalid client fd, skip to next event
                     continue;
                 }
@@ -288,9 +286,9 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-        
+
     }
-    
+
 
 
 
